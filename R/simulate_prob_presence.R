@@ -4,11 +4,11 @@ prop_mosquitoes_caught_in_trap <- 0.001
 average_catch_size <- mosquitoes_in_1sqkm * prop_mosquitoes_caught_in_trap
 average_catch_size
 
-
+max_average_catch_size <- max(average_catch_size)
 relative_abundance <- mosquitoes_in_1sqkm / max(mosquitoes_in_1sqkm)
 
 
-max_average_catch_size <- 100
+relative_abmax_average_catch_size <- 100
 average_catch_size <- relative_abundance * max_average_catch_size
 average_catch_size
 

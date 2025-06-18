@@ -9,29 +9,37 @@ source("R/functions.R")
 
 
 # load in real data
-kenya_mask <- terra::rast("data/grids/kenya_mask.tif")
-bc_kenya <- terra::rast("data/grids/bc_kenya.tif")
+mad_mask <- terra::rast("data/grids/mad_mask.tif")
+bc_mad <- terra::rast("data/grids/bc_mad.tif")
 rescale_travel <- terra::rast("data/grids/rescale_travel.tif")
 
 
 #specify covariates
+# BIO1 - Annual Mean Temperature
+ttemp <- bc_mad[[1]]
+# BIO3 = Isothermality (BIO2/BIO7) (×100), kind of like stability
+tiso <- bc_mad[[3]]
 # BIO4 = Temperature Seasonality (standard deviation ×100)
-tseas <- bc_kenya[[4]] 
-# BIO5 = Max Temperature of Warmest Month
-tmax   <- bc_kenya[[5]]
-# BIO7 = Temperature Annual Range (BIO5-BIO6)
-trange <- bc_kenya[[7]]
+tseas <- bc_mad[[4]] 
+# BIO12 = Annual Precipitation
+pprec <- bc_mad[[12]]
+# BIO15 = Precipitation Seasonality (Coefficient of Variation)
+pseas <- bc_mad[[15]]
+# BIO18 = Precipitation of Warmest Quarter
+pwarm <- bc_mad[[18]]
 
-covs <- c(tseas, tmax, trange)
-names(covs) <- c("tseas", "tmax", "trange")
+covs <- c(ttemp, tiso, tseas, pprec, pseas, pwarm)
+names(covs) <- c("ttemp", "tiso", "tseas", "pprec", "pseas", "pwarm")
 
 # bias layer
 bias <- rescale_travel ^ 2
 names(bias) <- "bias"
+plot(bias)
 
 terra::writeRaster(
   x = bias,
-  filename = "data/grids/bias.tif"
+  filename = "data/grids/bias.tif",
+  overwrite=TRUE
 )
 
 # generate the fake 'true' relative abundance raster
@@ -43,11 +51,24 @@ terra::writeRaster(
 
 # create your own here:
 
-rel_abund_unscaled <- exp(1 +
-                            covs$tseas * -0.01 +
-                            covs$tmax * -0.03 +
-                            covs$trange * -0.01 + 
-                            covs$trange ^ 2 * 0.02)
+# rel_abund_unscaled <- exp(1 +
+#                             covs$tseas * -0.01 +
+#                             covs$tmax * -0.03 +
+#                             covs$trange * -0.01 + 
+#                             covs$trange ^ 2 * 0.02)
+
+rel_abund_unscaled <- exp(-1 +
+                            (covs$ttemp-15) *  0.04   +
+                            (covs$ttemp-21) ^ 2 * -0.05 +
+                            (covs$tiso) *  0.02   +
+                            (covs$tseas) *  -0.005   +
+                            (covs$pprec-800) * 0.004 +
+                            (covs$pprec-700) ^ 2 * -0.000002 +
+                            (covs$pseas-10) *  0.02   +
+                            (covs$pseas-60) ^ 2 *-0.0007 +
+                            (covs$pwarm-400) * 0.002 +
+                            (covs$pwarm-800)^2 * -0.000005
+)
 
 # rescale the relative abundance, from 0 to 1
 rel_abund <- rescale_abundance(rel_abund_unscaled)
@@ -58,35 +79,42 @@ plot(rel_abund)
 
 terra::writeRaster(
   x = rel_abund,
-  filename = "data/grids/rel_abund.tif"
+  filename = "data/grids/rel_abund.tif",
+  overwrite=TRUE
 )
 
 # sample abundance data at a random set of locations
 n_samples <- 100
 
 # random locations all over the country - unweighted sampling
-sample_locations_random <- random_locations(kenya_mask,
+set.seed(126)
+sample_locations_random <- random_locations(mad_mask,
                                             n_samples,
                                             weighted = FALSE)
 
 plot(rel_abund)
 points(sample_locations_random)
 
+set.seed(32)
 catches_random <- sim_catches(sample_locations = sample_locations_random,
                               relative_abundance = rel_abund,
-                              max_average_catch_size = 100)
+                              max_average_catch_size = 68)
 
 plot(rel_abund)
 points(catches_random, pch = 21, bg = catches_random$presence)
+# # another way to do it
+# points(catches_random[catches_random$presence == 1], col="red")
 
 # random locations, biased as per the bias layer - e.g. convenience samples
+set.seed(93)
 sample_locations_bias_weighted <- random_locations(bias,
                                                    n_samples)
 plot(bias)
 points(sample_locations_bias_weighted, pch = 16)
+set.seed(25)
 catches_bias_weighted <- sim_catches(sample_locations = sample_locations_bias_weighted,
                                      relative_abundance = rel_abund,
-                                     max_average_catch_size = 100)
+                                     max_average_catch_size = 68)
 
 plot(rel_abund)
 points(catches_bias_weighted, pch = 21, bg = catches_bias_weighted$presence)
@@ -95,18 +123,34 @@ points(catches_bias_weighted, pch = 21, bg = catches_bias_weighted$presence)
 
 # random locations, biased as per the relative abundance layer - e.g. targeted
 # to areas of high abundance (where malaria interventions happen?)
-sample_locations_abundance_weighted <- random_locations(rel_abund ^ (1/3),
+set.seed(36)
+sample_locations_abundance_weighted <- random_locations(rel_abund ^ (1/3)+bias,
                                                         n_samples)
-
+set.seed(954)
 catches_abundance_weighted <- sim_catches(sample_locations = sample_locations_abundance_weighted,
                                           relative_abundance = rel_abund,
-                                          max_average_catch_size = 100)
+                                          max_average_catch_size = 68)
 
 plot(rel_abund)
 points(catches_abundance_weighted,
        pch = 21,
        bg = catches_abundance_weighted$presence)
 
+# biased with both?
+max_gen_bias <- global(rel_abund^(1/3)+bias, fun="max", na.rm=TRUE)
+gen_bias <- (rel_abund^(1/3)+bias)/max_gen_bias$max
+plot(gen_bias)
+set.seed(100)
+sample_locations_gen_weighted <- random_locations(gen_bias, n_samples)
+set.seed(111)
+catches_gen_weighted <- sim_catches(sample_locations = sample_locations_gen_weighted,
+                                          relative_abundance = rel_abund,
+                                          max_average_catch_size = 68)
+
+plot(rel_abund)
+points(catches_gen_weighted,
+       pch = 21,
+       bg = catches_gen_weighted$presence)
 
 # simulating biased occurrence data - there are two ways:
 
@@ -114,30 +158,34 @@ points(catches_abundance_weighted,
 # locations, and only keep the ones in which they are present
 
 # filter out biased ones to only the 1s, and store as coordinates of occurrence records
+set.seed(93)
 sample_locations_bias_weighted <- random_locations(bias,
                                                    n_samples)
+set.seed(25)
 catches_bias_weighted <- sim_catches(sample_locations = sample_locations_bias_weighted,
                                      relative_abundance = rel_abund,
-                                     max_average_catch_size = 100)
+                                     max_average_catch_size = 68)
+# keeping only the presence data
 occurrence_coords <- crds(catches_bias_weighted[catches_bias_weighted$presence == 1])
 
-plot(kenya_mask)
+plot(mad_mask)
 points(occurrence_coords, pch = 16)
 
 # this is great, but when simulating, it's difficult to get a realistic number
 # of occurrence records for model fitting! You can try changing the number of
 # sampling locations (n_samples in the code above) until it looks good:
-
+set.seed(93)
 sample_locations_bias_weighted <- random_locations(bias,
-                                                   2000)  # <- change this number
+                                                   150)  # <- change this number
+set.seed(25)
 catches_bias_weighted <- sim_catches(sample_locations = sample_locations_bias_weighted,
                                      relative_abundance = rel_abund,
-                                     max_average_catch_size = 100)
+                                     max_average_catch_size = 68)
 occurrence_coords <- crds(catches_bias_weighted[catches_bias_weighted$presence == 1])
 
 # number of records
 nrow(occurrence_coords)
-plot(kenya_mask)
+plot(mad_mask)
 points(occurrence_coords, pch = 16)
 
 
@@ -149,7 +197,7 @@ points(occurrence_coords, pch = 16)
 # the average number. It is the probability of observing one *or more*
 # mosquitoes in the catch. 
 
-prob_present <- probability_of_presence(rel_abund, max_average_catch_size = 100)
+prob_present <- probability_of_presence(rel_abund, max_average_catch_size = 68)
 names(prob_present) <- "prob_present"
 plot(prob_present)
 
@@ -157,23 +205,23 @@ reported_occurrence_rate <- bias * prob_present
 names(reported_occurrence_rate) <- "rep_occ_rate"
 
 plot(reported_occurrence_rate)
-n_occurrences <- 100
+n_occurrences <- 150
 sample_locations_bias_weighted <- random_locations(reported_occurrence_rate,
                                                    n_occurrences)
 
 # plot the reported occurrence rates
 plot(reported_occurrence_rate)
 points(sample_locations_bias_weighted, pch = 16)
+par(mfrow=c(2,2))
+plot(rel_abund)
+points(occurrence_coords, cex = 0.5, pch=20)
+plot(prob_present)
+points(occurrence_coords, cex = 0.5, pch=20)
+plot(reported_occurrence_rate)
+points(occurrence_coords, cex = 0.5, pch=20)
+plot(bias)
+points(occurrence_coords, cex = 0.5, pch=20)
 
-plot(
-  c(
-    rel_abund,
-    prob_present,
-    reported_occurrence_rate,
-    bias
-  )
-)
-points(occurrence_coords, cex = 0.2)
 
 terra::writeRaster(
   x = prob_present,

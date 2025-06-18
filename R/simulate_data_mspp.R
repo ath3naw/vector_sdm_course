@@ -1,4 +1,4 @@
-# preparing data part - simulating joint PA and PO data for multiple species
+# preparing data part 1 - simulating joint PA and PO data for multiple species
 # with shared bias and predictive covariates
 
 # load packages
@@ -7,32 +7,39 @@ library(terra)
 source("R/functions.R")
 
 # read our rasters in
-kenya_mask <- terra::rast("data/grids/kenya_mask.tif")
-bc_kenya <- terra::rast("data/grids/bc_kenya.tif")
+mad_mask <- terra::rast("data/grids/mad_mask.tif")
+bc_mad <- terra::rast("data/grids/bc_mad.tif")
 rescale_travel <- terra::rast("data/grids/rescale_travel.tif")
 
-#specify covariates
+#specify covariates used for the model
+# BIO1 - Annual Mean Temperature
+ttemp <- bc_mad[[1]]
+# BIO3 = Isothermality (BIO2/BIO7) (×100), kind of like stability
+tiso <- bc_mad[[3]]
 # BIO4 = Temperature Seasonality (standard deviation ×100)
-tseas <- bc_kenya[[4]] 
-# BIO5 = Max Temperature of Warmest Month
-tmax   <- bc_kenya[[5]]
-# BIO7 = Temperature Annual Range (BIO5-BIO6)
-trange <- bc_kenya[[7]]
+tseas <- bc_mad[[4]] 
+# BIO12 = Annual Precipitation
+pprec <- bc_mad[[12]]
+# BIO15 = Precipitation Seasonality (Coefficient of Variation)
+pseas <- bc_mad[[15]]
+# BIO18 = Precipitation of Warmest Quarter
+pwarm <- bc_mad[[18]]
 
-covs <- c(tseas, tmax, trange)
-names(covs) <- c("tseas", "tmax", "trange")
+covs <- c(ttemp, tiso, tseas, pprec, pseas, pwarm)
+names(covs) <- c("ttemp", "tiso", "tseas", "pprec", "pseas", "pwarm")
 
 writeRaster(covs,
             "data/grids/covs_mspp.tif",
             overwrite = TRUE)
 
 # bias layer
-bias <- rescale_travel ^ 2
-names(bias) <- "bias"
+# DON'T DO BIAS YET
+#bias <- rescale_travel ^ 2
+#names(bias) <- "bias"
 
-writeRaster(bias,
-            "data/grids/bias_mspp.tif",
-            overwrite = TRUE)
+# writeRaster(bias,
+#             "data/grids/bias_mspp.tif",
+#             overwrite = TRUE)
 
 # generate the fake 'true' relative abundance raster for the target species
 
@@ -41,28 +48,50 @@ writeRaster(bias,
 
 # create your own here:
 
+# rel_abund_unscaled <- exp(-1 +
+#                             covs$ttemp *  -0.03   +
+#                             covs$tiso *  -0.02   +
+#                             covs$pseas *  0.01   +
+#                             covs$pwarm ^ 2 *  0  )
+
 rel_abund_unscaled <- exp(-1 +
-                            covs$tseas *  -0.03   +
-                            covs$tmax *  -0.02   +
-                            covs$trange *  0.01   +
-                            covs$trange ^ 2 *  0  )
+                            (covs$ttemp-15) *  0.04   +
+                            (covs$ttemp-21) ^ 2 * -0.05 +
+                            (covs$tiso) *  0.02   +
+                            (covs$tseas) *  -0.005   +
+                            (covs$pprec-800) * 0.004 +
+                            (covs$pprec-700) ^ 2 * -0.000002 +
+                            (covs$pseas-10) *  0.02   +
+                            (covs$pseas-60) ^ 2 *-0.0007 +
+                            (covs$pwarm-400) * 0.002 +
+                            (covs$pwarm-800)^2 * -0.000005
+                            )
 
 # rescale the relative abundance, from 0 to 1
 rel_abund <- rescale_abundance(rel_abund_unscaled)
 names(rel_abund) <- "relative_abundance"
+plot(rel_abund)
 
 # sample abundance data at a random set of locations
 n_samples <- 100
 
 # random locations all over the country - unweighted sampling
-sample_locations_random <- random_locations(kenya_mask,
+set.seed(126)
+sample_locations_random <- random_locations(mad_mask,
                                             n_samples,
                                             weighted = FALSE)
+plot(rel_abund)
+points(sample_locations_random)
 
 # simulate PA data
+set.seed(32)
 catches_random <- sim_catches(sample_locations = sample_locations_random,
                               relative_abundance = rel_abund,
                               max_average_catch_size = 10)
+catches_random
+points(catches_random, pch=21, bg=catches_random$presence)
+# # another way to do it
+# points(catches_random[catches_random$presence == 1], col="red")
 
 
 # simulate PO data
