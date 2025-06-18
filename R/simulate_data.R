@@ -34,7 +34,7 @@ names(covs) <- c("ttemp", "tiso", "tseas", "pprec", "pseas", "pwarm")
 # bias layer
 bias <- rescale_travel ^ 2
 names(bias) <- "bias"
-plot(bias)
+plot(bias, main="Bias")
 
 terra::writeRaster(
   x = bias,
@@ -69,13 +69,14 @@ rel_abund_unscaled <- exp(-1 +
                             (covs$pwarm-400) * 0.002 +
                             (covs$pwarm-800)^2 * -0.000005
 )
+par(mfrow=c(1,1))
 
 # rescale the relative abundance, from 0 to 1
 rel_abund <- rescale_abundance(rel_abund_unscaled)
 
 names(rel_abund) <- "relative_abundance"
 
-plot(rel_abund)
+plot(rel_abund, main="Relative Abundance")
 
 terra::writeRaster(
   x = rel_abund,
@@ -84,10 +85,9 @@ terra::writeRaster(
 )
 
 # sample abundance data at a random set of locations
-n_samples <- 100
+n_samples <- 150
 
 # random locations all over the country - unweighted sampling
-set.seed(126)
 sample_locations_random <- random_locations(mad_mask,
                                             n_samples,
                                             weighted = FALSE)
@@ -95,38 +95,69 @@ sample_locations_random <- random_locations(mad_mask,
 plot(rel_abund)
 points(sample_locations_random)
 
-set.seed(32)
 catches_random <- sim_catches(sample_locations = sample_locations_random,
                               relative_abundance = rel_abund,
                               max_average_catch_size = 68)
 
-plot(rel_abund)
+plot(rel_abund, main="Presence-Absence Data - Unbiased")
 points(catches_random, pch = 21, bg = catches_random$presence)
+
+# format presence absence data
+
+# presence-absence data with sampling locations randomly selected
+pa_random_data <- as_tibble(catches_random) %>%
+  dplyr::select(count, presence) %>%
+  bind_cols(as_tibble(crds(catches_random)))
+
+# # non-tidyverse way
+# pa_random_occurrence <- as.data.frame(catches_random)
+# pa_random_occurrence <- pa_random_occurrence[, c("count", "presence")]
+# pa_random_coords <- as.data.frame(crds(catches_random))
+# pa_random_data <- cbind(
+#   pa_random_occurrence,
+#   pa_random_coords
+# )
+
+write.csv(
+  x = pa_random_data,
+  file = "data/tabular/presence_absence_random_sampling.csv",
+  row.names = FALSE,
+)
 # # another way to do it
 # points(catches_random[catches_random$presence == 1], col="red")
 
 # random locations, biased as per the bias layer - e.g. convenience samples
-set.seed(93)
 sample_locations_bias_weighted <- random_locations(bias,
                                                    n_samples)
-plot(bias)
+plot(bias, main="Biased Sample Locations")
 points(sample_locations_bias_weighted, pch = 16)
-set.seed(25)
 catches_bias_weighted <- sim_catches(sample_locations = sample_locations_bias_weighted,
                                      relative_abundance = rel_abund,
                                      max_average_catch_size = 68)
 
-plot(rel_abund)
+plot(rel_abund, main="Presence-Absence Data - Biased")
 points(catches_bias_weighted, pch = 21, bg = catches_bias_weighted$presence)
 
- 
+plot(bias)
+points(catches_bias_weighted, pch = 21, bg = catches_bias_weighted$presence)
+
+
+# presence-absence data with sampling locations biased towards areas closer to
+# major cities
+pa_bias_data <- as_tibble(catches_bias_weighted) %>%
+  dplyr::select(count, presence) %>%
+  bind_cols(as_tibble(crds(catches_bias_weighted)))
+
+write.csv(
+  x = pa_bias_data,
+  file = "data/tabular/presence_absence_bias_sampling.csv",
+  row.names = FALSE
+)
 
 # random locations, biased as per the relative abundance layer - e.g. targeted
 # to areas of high abundance (where malaria interventions happen?)
-set.seed(36)
 sample_locations_abundance_weighted <- random_locations(rel_abund ^ (1/3)+bias,
                                                         n_samples)
-set.seed(954)
 catches_abundance_weighted <- sim_catches(sample_locations = sample_locations_abundance_weighted,
                                           relative_abundance = rel_abund,
                                           max_average_catch_size = 68)
@@ -136,13 +167,23 @@ points(catches_abundance_weighted,
        pch = 21,
        bg = catches_abundance_weighted$presence)
 
+# presence-absence data with sampling locations biased towards areas with higher
+# abundance
+pa_bias_abund_data <- as_tibble(catches_abundance_weighted) %>%
+  dplyr::select(count, presence) %>%
+  bind_cols(as_tibble(crds(catches_abundance_weighted)))
+
+write.csv(
+  x = pa_bias_abund_data,
+  file = "data/tabular/presence_absence_bias_abund_sampling.csv",
+  row.names = FALSE
+)
+
 # biased with both?
 max_gen_bias <- global(rel_abund^(1/3)+bias, fun="max", na.rm=TRUE)
 gen_bias <- (rel_abund^(1/3)+bias)/max_gen_bias$max
 plot(gen_bias)
-set.seed(100)
 sample_locations_gen_weighted <- random_locations(gen_bias, n_samples)
-set.seed(111)
 catches_gen_weighted <- sim_catches(sample_locations = sample_locations_gen_weighted,
                                           relative_abundance = rel_abund,
                                           max_average_catch_size = 68)
@@ -152,42 +193,62 @@ points(catches_gen_weighted,
        pch = 21,
        bg = catches_gen_weighted$presence)
 
+pa_gen_bias_data <- as_tibble(catches_gen_weighted) %>%
+  dplyr::select(count, presence) %>%
+  bind_cols(as_tibble(crds(catches_gen_weighted)))
+
+write.csv(
+  x = pa_gen_bias_data,
+  file = "data/tabular/presence_absence_gen_bias_sampling.csv",
+  row.names = FALSE
+)
+
 # simulating biased occurrence data - there are two ways:
 
 # 1. simulate biased sampling locations, and then sample the presence at those
 # locations, and only keep the ones in which they are present
 
-# filter out biased ones to only the 1s, and store as coordinates of occurrence records
-set.seed(93)
-sample_locations_bias_weighted <- random_locations(bias,
-                                                   n_samples)
-set.seed(25)
-catches_bias_weighted <- sim_catches(sample_locations = sample_locations_bias_weighted,
-                                     relative_abundance = rel_abund,
-                                     max_average_catch_size = 68)
+# # filter out biased ones to only the 1s, and store as coordinates of occurrence records
+# set.seed(93)
+# sample_locations_bias_weighted <- random_locations(bias,
+#                                                    n_samples)
+# set.seed(25)
+# catches_bias_weighted <- sim_catches(sample_locations = sample_locations_bias_weighted,
+#                                      relative_abundance = rel_abund,
+#                                      max_average_catch_size = 68)
 # keeping only the presence data
 occurrence_coords <- crds(catches_bias_weighted[catches_bias_weighted$presence == 1])
 
 plot(mad_mask)
 points(occurrence_coords, pch = 16)
 
-# this is great, but when simulating, it's difficult to get a realistic number
-# of occurrence records for model fitting! You can try changing the number of
-# sampling locations (n_samples in the code above) until it looks good:
-set.seed(93)
-sample_locations_bias_weighted <- random_locations(bias,
-                                                   150)  # <- change this number
-set.seed(25)
-catches_bias_weighted <- sim_catches(sample_locations = sample_locations_bias_weighted,
-                                     relative_abundance = rel_abund,
-                                     max_average_catch_size = 68)
-occurrence_coords <- crds(catches_bias_weighted[catches_bias_weighted$presence == 1])
+# presence_only
+write.csv(
+  x = occurrence_coords,
+  file = "data/tabular/presence_only_data.csv",
+  row.names = FALSE
+)
+
+# # this is great, but when simulating, it's difficult to get a realistic number
+# # of occurrence records for model fitting! You can try changing the number of
+# # sampling locations (n_samples in the code above) until it looks good:
+# set.seed(93)
+# sample_locations_bias_weighted <- random_locations(bias,
+#                                                    150)  # <- change this number
+# set.seed(25)
+# catches_bias_weighted <- sim_catches(sample_locations = sample_locations_bias_weighted,
+#                                      relative_abundance = rel_abund,
+#                                      max_average_catch_size = 68)
+# occurrence_coords <- crds(catches_bias_weighted[catches_bias_weighted$presence == 1])
 
 # number of records
 nrow(occurrence_coords)
 plot(mad_mask)
 points(occurrence_coords, pch = 16)
+# probability of a presence
+nrow(occurrence_coords)/n_samples
 
+# *** WILL NOT BE USING THIS BELOW!!! ***
 
 # 2. alternatively, you can simulate the distribution of occurrence points by
 # simulating locations, biased by the *product* of the bias and probability of
@@ -236,58 +297,8 @@ terra::writeRaster(
 dir.create("data/tabular")
 # save occurrence data
 
-# presence_only
-write.csv(
-  x = occurrence_coords,
-  file = "data/tabular/presence_only_data.csv",
-  row.names = FALSE
-)
 
-# format presence absence data
 
-# presence-absence data with sampling locations randomly selected
-pa_random_data <- as_tibble(catches_random) %>%
-  dplyr::select(count, presence) %>%
-  bind_cols(as_tibble(crds(catches_random)))
-
-# # non-tidyverse way
-# pa_random_occurrence <- as.data.frame(catches_random)
-# pa_random_occurrence <- pa_random_occurrence[, c("count", "presence")]
-# pa_random_coords <- as.data.frame(crds(catches_random))
-# pa_random_data <- cbind(
-#   pa_random_occurrence,
-#   pa_random_coords
-# )
-
-write.csv(
-  x = pa_random_data,
-  file = "data/tabular/presence_absence_random_sampling.csv",
-  row.names = FALSE
-)
-
-# presence-absence data with sampling locations biased towards areas closer to
-# major cities
-pa_bias_data <- as_tibble(catches_bias_weighted) %>%
-  dplyr::select(count, presence) %>%
-  bind_cols(as_tibble(crds(catches_bias_weighted)))
-
-write.csv(
-  x = pa_bias_data,
-  file = "data/tabular/presence_absence_bias_sampling.csv",
-  row.names = FALSE
-)
-
-# presence-absence data with sampling locations biased towards areas with higher
-# abundance
-pa_bias_abund_data <- as_tibble(catches_abundance_weighted) %>%
-  dplyr::select(count, presence) %>%
-  bind_cols(as_tibble(crds(catches_abundance_weighted)))
-
-write.csv(
-  x = pa_bias_abund_data,
-  file = "data/tabular/presence_absence_bias_abund_sampling.csv",
-  row.names = FALSE
-)
 
 # to do:
 
