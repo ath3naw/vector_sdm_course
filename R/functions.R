@@ -73,7 +73,7 @@ probability_of_presence <- function(relative_abundance,
   # in the long term?
   average_catch_size <- relative_abundance * max_average_catch_size
   
-  # what is the probability of detecting one or more mosqiutoes in a poisson
+  # what is the probability of detecting one or more mosquitoes in a poisson
   # sample with an average catch of this size
   probability_one_or_more <- 1 - exp(-(average_catch_size))
   
@@ -236,15 +236,18 @@ partial_response <- function (model, data, var, type = c("response", "link"), rn
 partial_response_plot <- function(
   model,
   data,
-  var
+  var,
+  scale = c("response", "link")
 ){
   plot(
     partial_response(
       model = model,
       data = data,
-      var = var
+      var = var,
+      type = scale
     ),
-    type = "l"
+    type = "l",
+    xlab = var # could put this into comments if you just want "var" at the bottom
   )
 }
 
