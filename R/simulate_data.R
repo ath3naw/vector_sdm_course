@@ -21,6 +21,8 @@ ttemp <- bc_mad[[1]]
 tiso <- bc_mad[[3]]
 # BIO4 = Temperature Seasonality (standard deviation ×100)
 tseas <- bc_mad[[4]] 
+# BIO8 = Mean Temperature of Wettest Quarter
+twet <- bc_mad[[8]]
 # BIO12 = Annual Precipitation
 pprec <- bc_mad[[12]]
 # BIO15 = Precipitation Seasonality (Coefficient of Variation)
@@ -28,8 +30,8 @@ pseas <- bc_mad[[15]]
 # BIO18 = Precipitation of Warmest Quarter
 pwarm <- bc_mad[[18]]
 
-covs <- c(ttemp, tiso, tseas, pprec, pseas, pwarm)
-names(covs) <- c("ttemp", "tiso", "tseas", "pprec", "pseas", "pwarm")
+covs <- c(ttemp, tiso, tseas, twet, pprec, pseas, pwarm)
+names(covs) <- c("ttemp", "tiso", "tseas", "twet", "pprec", "pseas", "pwarm")
 
 # bias layer
 bias <- rescale_travel ^ 2
@@ -59,9 +61,11 @@ terra::writeRaster(
 
 rel_abund_unscaled <- exp(-1 +
                             (covs$ttemp-15) *  0.04   +
-                            (covs$ttemp-21) ^ 2 * -0.05 +
+                            (covs$ttemp-24) ^ 2 * -0.05 +
                             (covs$tiso) *  0.02   +
                             (covs$tseas) *  -0.005   +
+                            (covs$twet-20) * 0.09 +
+                            (covs$twet-24) ^ 2 * -0.08 +
                             (covs$pprec-800) * 0.004 +
                             (covs$pprec-700) ^ 2 * -0.000002 +
                             (covs$pseas-10) *  0.02   +
@@ -286,12 +290,14 @@ points(occurrence_coords, cex = 0.5, pch=20)
 
 terra::writeRaster(
   x = prob_present,
-  filename = "data/grids/prob_present.tif"
+  filename = "data/grids/prob_present.tif",
+  overwrite=TRUE
 )
 
 terra::writeRaster(
   x = reported_occurrence_rate,
-  filename = "data/grids/reported_occurrence_rate.tif"
+  filename = "data/grids/reported_occurrence_rate.tif",
+  overwrite=TRUE
 )
 
 dir.create("data/tabular")
