@@ -12,20 +12,20 @@ library(multispeciesPP)
 source("R/functions.R")
 
 # load rasters for fitting
-kenya_mask <- terra::rast("data/grids/kenya_mask.tif")
+mad_mask <- terra::rast("data/grids/mad_mask.tif")
 rescale_travel <- terra::rast("data/grids/rescale_travel.tif")
 covs <- terra::rast("data/grids/covs_mspp.tif")
-ext(covs) <- ext(kenya_mask)
-crs(covs) <- crs(kenya_mask)
+ext(covs) <- ext(mad_mask)
+crs(covs) <- crs(mad_mask)
 
 
 # rasters for comparison
 prob_present <- terra::rast("data/grids/prob_present_mspp.tif")
 names(prob_present) <- "prob_present"
-ext(prob_present) <- ext(kenya_mask)
+ext(prob_present) <- ext(mad_mask)
 rep_occ_rate <- terra::rast("data/grids/reported_occurrence_rate_mspp.tif")
 names(rep_occ_rate) <- "rep_occ_rate"
-ext(rep_occ_rate) <- ext(kenya_mask)
+ext(rep_occ_rate) <- ext(mad_mask)
 
 # load the presence-absence and presence-only data for the target and other species
 
@@ -38,9 +38,9 @@ pa_other_species <- read.csv("data/tabular/other_species_pa_data.csv")
 po_other_species <- read.csv("data/tabular/other_species_po_data.csv")
 
 # generate random locations for background data
-n_background_points <- 1000
+n_background_points <- 500
 random_bg_coords <- terra::spatSample(
-  x = kenya_mask,
+  x = mad_mask,
   size = n_background_points,
   na.rm = TRUE,
   as.points = TRUE
@@ -57,7 +57,8 @@ data_po_random_bg <- model_data_presence_only(
 
 # fit a simple model!
 model_po_random_bg_logistic <- glm(
-  presence ~ tseas + tmax + trange,
+  presence ~ ttemp + tiso + tseas + twet + pprec + pseas + pwarm 
+  + twet*pwarm + tseas*pseas + pprec*twet + ttemp*pwarm + twet*ttemp,
   data = data_po_random_bg,
   family = binomial()
 )
@@ -83,7 +84,7 @@ pa_covariates <- terra::extract(covs, pa_coords) %>%
 pa_data <- pa_target_species %>%
   # we don't use the count data
   select(-count, -x, -y) %>%
-  # the presence colummn should be our species' name
+  # the presence column should be our species' name
   rename(target = presence) %>%
   # combine with the other species
   left_join(
@@ -106,7 +107,7 @@ pa_data <- pa_target_species %>%
 
 #  first extract the covariate and bias values for target and other species
 
-covs_and_bias <- c(covs, rescale_travel)
+covs_and_bias <- c(covs, rescale_travel) # don't have true bias (rescale_travel^2)
 
 po_all_species <- bind_rows(
   po_target_species %>%
@@ -140,18 +141,26 @@ po_covs_all_species_list <- mapply(
 # background coordinate values
 bg <- terra::extract(covs_and_bias, random_bg_coords)
 
-n_pa_obs <- 50
+n_pa_obs <- 100
 pa_data_keep_idx <- sample.int(nrow(pa_data), n_pa_obs)
 
-full.mod <- multispeciesPP(sdm.formula = ~ tseas + tmax + trange,
-                           bias.formula = ~travel_time_to_cities_2,
+full.mod <- multispeciesPP(sdm.formula = ~ ttemp + tiso + tseas + twet + pprec + pseas + pwarm 
+                           + twet*pwarm + tseas*pseas + pprec*twet + ttemp*pwarm + twet*ttemp,
+                           bias.formula = ~travel_time_to_cities_1,
                            PA = pa_data[pa_data_keep_idx, ],
                            #PO = po_data_list,
                            PO = po_covs_all_species_list,
                            BG = bg)
 
+# full.mod <- multispeciesPP(sdm.formula = ~ ttemp + tiso + tseas + twet + pprec + pseas + pwarm,
+#                            bias.formula = ~travel_time_to_cities_1,
+#                            PA = pa_data[pa_data_keep_idx, ],
+#                            #PO = po_data_list,
+#                            PO = po_covs_all_species_list,
+#                            BG = bg)
+
 # prediction is more difficult
-non_na_idx <- which(!is.na(as.vector(kenya_mask)))
+non_na_idx <- which(!is.na(as.vector(mad_mask)))
 pred_vals <- covs_and_bias[non_na_idx]
 
 link_preds <- multispeciesPP::predict.multispeciesPP(full.mod,
@@ -159,11 +168,11 @@ link_preds <- multispeciesPP::predict.multispeciesPP(full.mod,
                                                      species = "target")
 prob_preds <- 1 - exp(-exp(link_preds))
 
-predicted_distribution <- kenya_mask
+predicted_distribution <- mad_mask
 names(predicted_distribution) <- "predicted_distribution_mpp"
 predicted_distribution[non_na_idx] <- prob_preds[, 1]
 
-# plot(predicted_distribution)
+plot(predicted_distribution)
 
 plot(c(prob_present,
        rep_occ_rate,

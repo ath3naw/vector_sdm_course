@@ -89,7 +89,7 @@ terra::writeRaster(
 )
 
 # sample abundance data at a random set of locations
-n_samples <- 150
+n_samples <- 500
 
 # random locations all over the country - unweighted sampling
 sample_locations_random <- random_locations(mad_mask,
@@ -270,7 +270,7 @@ reported_occurrence_rate <- bias * prob_present
 names(reported_occurrence_rate) <- "rep_occ_rate"
 
 plot(reported_occurrence_rate)
-n_occurrences <- 150
+n_occurrences <- 366
 sample_locations_bias_weighted <- random_locations(reported_occurrence_rate,
                                                    n_occurrences)
 

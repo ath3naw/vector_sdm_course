@@ -196,7 +196,42 @@ model_data_presence_absence <- function(
 
 
 
-# fit a partial response curve
+# fit a probabilityal response curve
+probability_ofal_response <- function (model, data, var, type = c("response", "link"), rng = NULL, nsteps = 25) {
+  
+  type <- match.arg(type)
+  if (missing(var)) {
+    var <- names(data)[1]
+  }
+  else if (is.numeric(var)) {
+    stopifnot(var > 0 & var <= ncol(data))
+    var <- names(data)[var]
+  }
+  else {
+    stopifnot(var %in% names(data))
+  }
+  if (is.factor(data[[var]])) {
+    steps <- levels(data[[var]])
+  }
+  else {
+    if (is.null(rng)) {
+      rng <- range(data[[var]])
+    }
+    increment <- (rng[2] - rng[1])/(nsteps - 2)
+    steps <- seq(rng[1] - increment, rng[2] + increment, 
+                 increment)
+  }
+  res <- rep(NA, length(steps))
+  for (i in 1:length(steps)) {
+    data[[var]] <- steps[i]
+    p <- predict(model, data, type = type)
+    res[i] <- mean(p)
+  }
+  x <- data.frame(steps, res)
+  names(x) <- c("var", "p")
+  x
+}
+
 partial_response <- function (model, data, var, type = c("response", "link"), rng = NULL, nsteps = 25) {
   
   type <- match.arg(type)
@@ -250,6 +285,165 @@ partial_response_plot <- function(
     xlab = var # could put this into comments if you just want "var" at the bottom
   )
 }
+
+partial_group <- function(var, means, bounds, cons, minmax, max_average_catch_size=5000, length_out = 25){
+  var_name <- var
+  i <- which(bounds$variable == var_name)
+  pr_data <- seq(from=bounds$min.min[i],
+                       to=bounds$min.max[i],
+                       length.out=25)
+  gamma <- rep(beta_group["int"], length_out)
+  for(term in names(beta_group)){
+    if(term == "int") next # skip intercept
+    # if name of variable ends in 2
+    if(grepl("[0-9]$", term)){
+      suffix <- sub(".*([0-9])", "\\1", term)
+      suffix <- as.numeric(suffix)
+      base_var <- sub("[0-9]$", "", term)
+      if(base_var == var_name){
+        if(base_var %in% names(cons)){
+          gamma <- gamma + beta_group[term] * (pr_data-cons[base_var])^suffix
+        }else{
+          gamma <- gamma + beta_group[term] * pr_data^suffix
+        }
+      }else{
+        if(base_var %in% names(cons)){
+          gamma <- gamma + beta_group[term] * (covs_means[[base_var]]-cons[base_var])^suffix
+        }else{
+          gamma <- gamma + beta_group[term] * covs_means[[base_var]]^suffix
+        }
+      }
+    }else{
+      if(term == var_name){
+        gamma <- gamma + beta_group[term] * pr_data
+      }else{
+        gamma <- gamma + beta_group[term] * covs_means[[term]]
+      }
+    }
+  }
+  
+  gamma_pr <- exp(gamma)
+  scaled <- gamma_pr-minmax[1]+0.00001
+  scaled <- scaled/(minmax[2]-minmax[1]+0.00001)
+  prob_pres <- probability_of_presence(scaled, max_average_catch_size)
+  
+  plot(
+    x = pr_data,
+    y = prob_pres,
+    xlab = var_name
+    #ylim = c(0, 1)
+  )
+}
+
+partial_spec <- function(var, means, bounds, cons, minmax, max_average_catch_size=5000, length_out = 25, sp){
+  var_name <- var
+  i <- which(bounds$variable == var_name)
+  pr_data <- seq(from=bounds$min.min[i],
+                 to=bounds$min.max[i],
+                 length.out=25)
+  gamma <- rep(beta_group["int"]+species_data[sp,]$int, length_out)
+  for(term in names(beta_group)){
+    if(term == "int") next # skip intercept
+    # if name of variable ends in 2
+    if(grepl("[0-9]$", term)){
+      suffix <- sub(".*([0-9])", "\\1", term)
+      suffix <- as.numeric(suffix)
+      base_var <- sub("[0-9]$", "", term)
+      if(base_var == var_name){
+        if(base_var %in% names(cons)){
+          gamma <- gamma + (beta_group[term]+species_data[sp,][[term]]) * (pr_data-cons[base_var])^suffix
+        }else{
+          gamma <- gamma + (beta_group[term]+species_data[sp,][[term]]) * pr_data^suffix
+        }
+      }else{
+        if(base_var %in% names(cons)){
+          gamma <- gamma + (beta_group[term]+species_data[sp,][[term]]) * (covs_means[[base_var]]-cons[base_var])^suffix
+        }else{
+          gamma <- gamma + (beta_group[term]+species_data[sp,][[term]]) * covs_means[[base_var]]^suffix
+        }
+      }
+    }else{
+      if(term == var_name){
+        gamma <- gamma + (beta_group[term]+species_data[sp,][[term]]) * pr_data
+      }else{
+        gamma <- gamma + (beta_group[term]+species_data[sp,][[term]]) * covs_means[[term]]
+      }
+    }
+  }
+  
+  gamma_pr <- exp(gamma)
+  scaled <- gamma_pr-minmax[sp,1]+0.00001
+  scaled <- scaled/(minmax[sp,2]-minmax[sp,1]+0.00001)
+  prob_pres <- probability_of_presence(scaled, max_average_catch_size)
+  
+  plot(
+    x = pr_data,
+    y = prob_pres,
+    xlab = var_name
+    #ylim = c(0, 1)
+  )
+}
+
+generate_data_tabular <- function(n_samples, bias, prob_pres, n_sp = 10, weighted = FALSE){
+  sample_locations <- random_locations(bias,
+                                      n_samples,
+                                       weighted=weighted)
+  pa_coords <- crds(sample_locations)
+  pa_df <- tibble(site_id = integer(0),
+                  presence = integer(0),
+                  species_id = integer(0))
+  
+  for(i in seq_len(n_sp)) {
+    # simulate presence-absence data
+    p <- terra::extract(prob_pres, pa_coords)[, i]
+    presence <- rbinom(length(p), 1, p)
+    
+    pa_df <- rbind(pa_df,
+                   tibble(
+                     site_id = seq_along(p),
+                     presence = presence,
+                     species_id = letters[i])
+    )
+    
+  }
+  
+  pa_tabular <- pa_df %>%
+    pivot_wider(names_from = species_id,
+                values_from = presence) %>%
+    left_join(
+      bind_cols(site_id = seq_len(nrow(pa_coords)),
+                pa_coords),
+      
+      by = "site_id"
+    ) %>%
+    relocate(x, y,
+             .after = site_id)
+  pa_tab <- pa_tabular |> 
+    mutate(complex = ifelse(rowSums(across(letters[1:n_sp])) > 0, 1, 0))
+  pa_tab
+}
+
+generate_model_data <- function(n_samples, n_cp, pa_tab, n_sp=10){
+  pa_tab_1 <- pa_tab[1:n_cp,] |>
+    select(site_id, x, y, complex) |>
+    rename(pa = complex) |>
+    mutate(sp = "x")
+  if(n_cp<n_samples){
+    pa_tab_2 <- pa_tab[(n_cp+1):n_samples,] |>
+      select(-complex) |>
+      pivot_longer(cols = letters[1:n_sp], names_to = "sp", values_to = "pa")
+  }else{
+    pa_tab_2 <- NULL
+  }
+  pa_long <- rbind(pa_tab_1, pa_tab_2) |>
+    mutate(not_complex = ifelse(sp == "x", 0, 1))
+  covs_vals <- extract(x=covs, y=pa_long |> select(x, y))
+  covs_vals <- covs_vals |> select(-any_of(c("sp","not_complex")))
+  pa_model_data <- cbind(pa_long, covs_vals) |> select(-ID) |>
+    mutate(sp = as.factor(sp))
+  pa_model_data
+}
+
 
 
 

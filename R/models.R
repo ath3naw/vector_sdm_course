@@ -20,7 +20,7 @@ bc_mad <- terra::rast("data/grids/bc_mad.tif")
 rescale_travel <- terra::rast("data/grids/rescale_travel.tif")
 
 # points 
-occurrence_coords <- read_csv("data/tabular/presence_only_data.csv")
+occurrence_coords <- read_csv("data/tabular/presence_only_points.csv")
 pa_random_data <- read_csv("data/tabular/presence_absence_random_sampling.csv")
 pa_bias_data <- read_csv("data/tabular/presence_absence_bias_sampling.csv")
 pa_bias_abund_data  <- read_csv("data/tabular/presence_absence_bias_abund_sampling.csv")
@@ -51,7 +51,8 @@ data_pa_random
 
 # fit a simple model!
 model_pa_random_logistic <- glm(
-  presence ~ ttemp + tiso + tseas + twet + pprec + pseas + pwarm + twet*pwarm + tseas*pseas + pprec*twet + ttemp*pwarm,
+  presence ~ ttemp + tiso + tseas + twet + pprec + pseas + pwarm + twet*pwarm + 
+    tseas*pseas + pprec*twet + ttemp*pwarm + twet*ttemp,
   data = data_pa_random,
   family = binomial()
 )
@@ -108,6 +109,7 @@ pred_pa_random_logistic <- sdm_predict(
   model = model_pa_random_logistic,
   covariates = covs
 )
+par(mfrow=c(1,1))
 
 # plot it
 plot(pred_pa_random_logistic)
@@ -121,7 +123,7 @@ plot(c(prob_present, pred_pa_random_logistic))
 par(mfrow=c(1,1))
 
 # sample random background points
-n_background_points <- 500
+n_background_points <- 1000
 
 random_bg <- terra::spatSample(
   x = mad_mask,
@@ -144,7 +146,8 @@ data_po_random_bg <- model_data_presence_only(
 
 # fit a simple model!
 model_po_random_bg_logistic <- glm(
-  presence ~ ttemp + tiso + tseas + twet + pprec + pseas + pwarm + twet*pwarm + tseas*pseas + pprec*twet + ttemp*pwarm,
+  presence ~ ttemp + tiso + tseas + twet + pprec + pseas + pwarm + 
+    twet*pwarm + tseas*pseas + pprec*twet + ttemp*pwarm + twet*ttemp,
   data = data_po_random_bg,
   family = binomial()
 )
@@ -206,6 +209,85 @@ plot(c(pred_pa_random_logistic, pred_po_random_bg_logistic))
 # now compare that prediction with the truth
 plot(c(prob_present, pred_pa_random_logistic, pred_po_random_bg_logistic, reported_occurrence_rate))
 
+
+# ### Model: logistic regression of presence-only data (less variables)
+# # with random background 
+# par(mfrow=c(1,1))
+# 
+# # sample random background points
+# n_background_points <- 500
+# 
+# random_bg <- terra::spatSample(
+#   x = mad_mask,
+#   size = n_background_points,
+#   na.rm = TRUE,
+#   as.points = TRUE
+# )
+# 
+# rastpointplot(mad_mask, random_bg)
+# 
+# # put presence and background data together
+# # with covariates
+# 
+# data_po_random_bg <- model_data_presence_only(
+#   presences = occurrence_coords,
+#   absences = random_bg,
+#   covariates = covs
+# )
+# 
+# 
+# # fit a simple model!
+# model_po_random_bg_logistic <- glm(
+#   presence ~ ttemp + tiso + tseas + pprec + pwarm,
+#   data = data_po_random_bg,
+#   family = binomial()
+# )
+# summary(model_po_random_bg_logistic)
+# 
+# # partial response of each variable
+# partial_response_plot(
+#   model = model_pa_random_logistic,
+#   data = data_pa_random,
+#   var = "ttemp"
+# )
+# # now do other covariates
+# partial_response_plot(
+#   model = model_pa_random_logistic,
+#   data = data_pa_random,
+#   var = "tiso"
+# )
+# 
+# partial_response_plot(
+#   model = model_pa_random_logistic,
+#   data = data_pa_random,
+#   var = "tseas"
+# )
+# 
+# partial_response_plot(
+#   model = model_pa_random_logistic,
+#   data = data_pa_random,
+#   var = "pprec"
+# )
+# 
+# partial_response_plot(
+#   model = model_pa_random_logistic,
+#   data = data_pa_random,
+#   var = "pwarm"
+# )
+# 
+# # predict our distribution based on our model and covariates
+# pred_po_random_bg_logistic <- sdm_predict(
+#   model = model_po_random_bg_logistic,
+#   covariates = covs
+# )
+# 
+# # plot it
+# plot(pred_po_random_bg_logistic)
+# 
+# plot(c(pred_pa_random_logistic, pred_po_random_bg_logistic))
+# 
+# # now compare that prediction with the truth
+# plot(c(prob_present, pred_pa_random_logistic, pred_po_random_bg_logistic, reported_occurrence_rate))
 
 ### Model:presence-only with maxnet (R version of maxent)
 
@@ -325,7 +407,60 @@ plot(c(prob_present,
   pred_po_random_bg_maxent_bias,
   reported_occurrence_rate))
 
+### maxent model with less correlated variables
+data_po_random_bg_cut <- data_po_random_bg %>% select(ttemp, tiso, tseas, pprec, pwarm)
 
+# extract bias values from presence and background locations
+maxent_bias_df <-  model_data_presence_only(
+  presences = occurrence_coords,
+  absences = random_bg,
+  covariates = bias
+)
+
+# log them and create vector
+maxent_bias <- log(maxent_bias_df$bias)
+
+# model in maxnet
+
+model_po_random_bg_maxent_bias_cut <- maxnet(
+  p = data_po_random_bg$presence,
+  data = data_po_random_bg_cut,
+  offset = maxent_bias %>% as.matrix(),
+  f = maxnet.formula(
+    p = data_po_random_bg$presence,
+    data = data_po_random_bg_cut,
+    classes = "lqp"
+  ),
+  addsamplestobackground = FALSE # because we have included background
+)
+
+
+# partial response of each variable
+# different for maxnet than the glms
+plot(model_po_random_bg_maxent_bias_cut, "ttemp")
+plot(model_po_random_bg_maxent_bias_cut, "tiso")
+plot(model_po_random_bg_maxent_bias_cut, "tseas")
+plot(model_po_random_bg_maxent_bias_cut, "pprec")
+plot(model_po_random_bg_maxent_bias_cut, "pwarm")
+# do others!
+
+
+# predict our distribution based on our model and covariates
+pred_po_random_bg_maxent_bias_cut <- sdm_predict(
+  model = model_po_random_bg_maxent_bias_cut,
+  covariates = covs
+)
+
+# plot it
+plot(pred_po_random_bg_maxent_bias_cut)
+
+plot(c(pred_po_random_bg_maxent, pred_po_random_bg_maxent_bias, pred_po_random_bg_maxent_bias_cut))
+
+plot(c(prob_present,
+       pred_po_random_bg_maxent,
+       pred_po_random_bg_maxent_bias,
+       pred_po_random_bg_maxent_bias_cut,
+       reported_occurrence_rate))
 
 
 
@@ -359,7 +494,7 @@ model_po_tbg_maxent <- maxnet(
     data = data_po_tgb_all %>% select(-presence),
     classes = "lqp"
   ),
-  addsamplestobackground = FALSE # becase we have included background
+  addsamplestobackground = FALSE # because we have included background
 )
 summary(model_po_tbg_maxent)
 
@@ -379,11 +514,63 @@ plot(c(prob_present,
        pred_po_tgb_maxent))
 
 
+### glm model with less correlated variables
+
+# our data
+# presences
+occurrence_coords
+
+# this time we will use other species as "absences"
+species_df
+
+data_po_tgb_all <- model_data_presence_only(
+  presences = occurrence_coords,
+  absences = species_df %>%
+    filter(type == "focal") %>%
+    dplyr::select(x, y),
+  covariates = covs
+)
+
+data_po_tgb_all_cut <- data_po_tgb_all %>% select(ttemp, tiso, tseas, pprec, pwarm)
+
+
+# maxent with target group background (and not bias)
+
+model_po_tbg_maxent_cut <- maxnet(
+  p = data_po_tgb_all$presence,
+  data = data_po_tgb_all_cut,
+  f = maxnet.formula(
+    p = data_po_tgb_all$presence,
+    data = data_po_tgb_all_cut,
+    classes = "lqp"
+  ),
+  addsamplestobackground = FALSE # because we have included background
+)
+summary(model_po_tbg_maxent_cut)
+
+# predict our distribution based on our model and covariates
+pred_po_tgb_maxent_cut <- sdm_predict(
+  model = model_po_tbg_maxent_cut,
+  covariates = covs
+)
+
+# plot it
+plot(pred_po_tgb_maxent_cut)
+
+# now compare that prediction with the truth
+plot(c(prob_present,
+       pred_po_random_bg_maxent,
+       pred_po_random_bg_maxent_bias,
+       pred_po_random_bg_maxent_bias_cut,
+       pred_po_tgb_maxent,
+       pred_po_tgb_maxent_cut))
+
+
 
 ### Model: correlated predictor variables
 
-covs_correlated <- bc_mad[[c(1,5,12)]]
-names(covs_correlated) <- c("tmean", "tmax", "precip")
+covs_correlated <- bc_mad[[c(1,5,12,8)]]
+names(covs_correlated) <- c("tmean", "tmax", "precip", "twet")
 plot(covs_correlated)
 
 pa_random_data
@@ -397,7 +584,7 @@ data_pa_random_correlated
 
 # fit a simple model!
 model_pa_random_correlated_logistic <- glm(
-  presence ~  tmean + tmax + precip,
+  presence ~  tmean + tmax + precip + twet,
   data = data_pa_random_correlated,
   family = binomial()
 )

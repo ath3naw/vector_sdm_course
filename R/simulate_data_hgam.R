@@ -1,0 +1,479 @@
+rm(list=ls())
+library(tidyverse)
+library(terra)
+library(geodata)
+library(gratia)
+library(dplyr)
+source("R/functions.R")
+
+# Load in variables
+par(mfrow = c(1,1))
+prob_pres <- terra::rast("data/grids/spec_prob_pres_hglm.tif")
+covs <- terra::rast("data/grids/covariates.tif")
+mad_mask <- terra::rast("data/grids/mad_mask.tif")
+bc_mad <- terra::rast("data/grids/bc_mad.tif")
+bias <- terra::rast("data/grids/bias.tif")
+sp_bias <- prob_pres[[9]]
+#bias <- sp_bias # can comment out, this is for testing when it is biased toward a certain species
+writeRaster(sp_bias,
+            "data/grids/sp_bias.tif",
+            overwrite = TRUE)
+
+n_sp <- nlyr(prob_pres)
+plot(bias)
+plot(sp_bias)
+## Now for simulation of the data
+### Medium data, no bias
+n_samples <- 300
+pa_tab <- generate_data_tabular(n_samples, mad_mask, prob_pres=prob_pres)
+write.csv(pa_tab,
+          file = "data/tabular/hglm_pa_tab_data_med.csv",
+          row.names = FALSE)
+
+# checking presence and absence data
+plot(prob_pres[[1]], range=c(0,1))
+points(pa_tab$x, pa_tab$y, pch=21, bg=pa_tab$a==1)
+plot(prob_pres[[2]], range=c(0,1))
+points(pa_tab$x, pa_tab$y, pch=21, bg=pa_tab$b==1)
+
+## 5/6 complex
+n_cp <- round(n_samples*5/6)
+pa_model_data <- generate_model_data(n_samples, n_cp, pa_tab)
+pa_model_data
+
+# save these items
+write.csv(pa_model_data,
+          file = "data/tabular/hglm_pa_data_med_nobias_56.csv",
+          row.names = FALSE)
+
+## 2/3 complex
+n_cp <- round(n_samples*2/3)
+pa_model_data <- generate_model_data(n_samples, n_cp, pa_tab)
+
+# save these items
+write.csv(pa_model_data,
+          file = "data/tabular/hglm_pa_data_med_nobias_23.csv",
+          row.names = FALSE)
+
+
+## 1/3 complex
+n_cp <- round(n_samples*1/3)
+pa_model_data <- generate_model_data(n_samples, n_cp, pa_tab)
+
+# save these items
+write.csv(pa_model_data,
+          file = "data/tabular/hglm_pa_data_med_nobias_13.csv",
+          row.names = FALSE)
+
+## 1/6 complex
+n_cp <- round(n_samples*1/6)
+pa_model_data <- generate_model_data(n_samples, n_cp, pa_tab)
+
+# save these items
+write.csv(pa_model_data,
+          file = "data/tabular/hglm_pa_data_med_nobias_16.csv",
+          row.names = FALSE)
+
+
+### Large amount of data, no bias
+n_samples <- 900
+pa_tab <- generate_data_tabular(n_samples, mad_mask, prob_pres=prob_pres)
+write.csv(pa_tab,
+          file = "data/tabular/hglm_pa_tab_data_max.csv",
+          row.names = FALSE)
+
+# checking presence and absence data
+plot(prob_pres[[1]], range=c(0,1))
+points(pa_tab$x, pa_tab$y, pch=21, bg=pa_tab$a==1)
+plot(prob_pres[[2]], range=c(0,1))
+points(pa_tab$x, pa_tab$y, pch=21, bg=pa_tab$b==1)
+
+## 5/6 complex
+n_cp <- round(n_samples*5/6)
+pa_model_data <- generate_model_data(n_samples, n_cp, pa_tab)
+pa_model_data
+
+# save these items
+write.csv(pa_model_data,
+          file = "data/tabular/hglm_pa_data_max_nobias_56.csv",
+          row.names = FALSE)
+
+## 2/3 complex
+n_cp <- round(n_samples*2/3)
+pa_model_data <- generate_model_data(n_samples, n_cp, pa_tab)
+
+# save these items
+write.csv(pa_model_data,
+          file = "data/tabular/hglm_pa_data_max_nobias_23.csv",
+          row.names = FALSE)
+
+
+## 1/3 complex
+n_cp <- round(n_samples*1/3)
+pa_model_data <- generate_model_data(n_samples, n_cp, pa_tab)
+
+# save these items
+write.csv(pa_model_data,
+          file = "data/tabular/hglm_pa_data_max_nobias_13.csv",
+          row.names = FALSE)
+
+## 1/6 complex
+n_cp <- round(n_samples*1/6)
+pa_model_data <- generate_model_data(n_samples, n_cp, pa_tab)
+
+# save these items
+write.csv(pa_model_data,
+          file = "data/tabular/hglm_pa_data_max_nobias_16.csv",
+          row.names = FALSE)
+
+### Small amount of data, no bias
+n_samples <- 100
+pa_tab <- generate_data_tabular(n_samples, mad_mask, prob_pres=prob_pres)
+write.csv(pa_tab,
+          file = "data/tabular/hglm_pa_tab_data_min.csv",
+          row.names = FALSE)
+
+# checking presence and absence data
+plot(prob_pres[[1]], range=c(0,1))
+points(pa_tab$x, pa_tab$y, pch=21, bg=pa_tab$a==1)
+plot(prob_pres[[2]], range=c(0,1))
+points(pa_tab$x, pa_tab$y, pch=21, bg=pa_tab$b==1)
+
+## 5/6 complex
+n_cp <- round(n_samples*5/6)
+pa_model_data <- generate_model_data(n_samples, n_cp, pa_tab)
+pa_model_data
+
+# save these items
+write.csv(pa_model_data,
+          file = "data/tabular/hglm_pa_data_min_nobias_56.csv",
+          row.names = FALSE)
+
+## 2/3 complex
+n_cp <- round(n_samples*2/3)
+pa_model_data <- generate_model_data(n_samples, n_cp, pa_tab)
+
+# save these items
+write.csv(pa_model_data,
+          file = "data/tabular/hglm_pa_data_min_nobias_23.csv",
+          row.names = FALSE)
+
+
+## 1/3 complex
+n_cp <- round(n_samples*1/3)
+pa_model_data <- generate_model_data(n_samples, n_cp, pa_tab)
+
+# save these items
+write.csv(pa_model_data,
+          file = "data/tabular/hglm_pa_data_min_nobias_13.csv",
+          row.names = FALSE)
+
+## 1/6 complex
+n_cp <- round(n_samples*1/6)
+pa_model_data <- generate_model_data(n_samples, n_cp, pa_tab)
+
+# save these items
+write.csv(pa_model_data,
+          file = "data/tabular/hglm_pa_data_min_nobias_16.csv",
+          row.names = FALSE)
+
+
+### presence-only data
+## unbiased data
+pa_model_data <- read_csv("data/tabular/hglm_pa_data_med_nobias_23.csv")
+occurrence_coords <- pa_model_data[pa_model_data$pa==1,]
+plot(prob_pres[[1]])
+points(occurrence_coords$x, occurrence_coords$y, pch=16)
+# presence_only
+write.csv(
+  x = occurrence_coords,
+  file = "data/tabular/presence_only_data_hgam.csv",
+  row.names = FALSE
+)
+
+n_bg_points <- 500
+random_bg <- random_locations(mad_mask,
+                              (n_sp+1)*n_bg_points)
+site_id <- seq(from=max(occurrence_coords$site_id), length.out=nrow(random_bg))
+plot(mad_mask)
+points(random_bg)
+po_tab <- tibble()
+  po_tab <- bind_cols(
+    site_id=site_id,
+    as_tibble(crds(random_bg)),
+    tibble(
+      pa=0,
+      sp=rep(c(letters[1:n_sp], "x"), length.out=nrow(random_bg)),
+      not_complex = ifelse(sp == "x", 0, 1)
+    )
+  )
+
+covs_vals <- extract(x=covs, y=crds(random_bg)) |> select(-any_of(c("not_complex", "sp")))
+po_model_data <- rbind(occurrence_coords, bind_cols(po_tab, covs_vals)) |>
+  mutate(sp = as.factor(sp))
+
+write.csv(
+  x = po_model_data,
+  file = "data/tabular/presence_only_data_rbg_hgam.csv",
+  row.names = FALSE
+)
+
+plot(prob_pres[[1]])
+i <- pa_model_data$sp=="a"
+points(pa_model_data[i, c("x", "y")], pch=21, bg=pa_model_data$pa[i]==1)
+
+plot(prob_pres[[1]])
+i <- po_model_data$sp=="a"
+points(po_model_data[i, c("x", "y")], pch=21, bg=po_model_data$pa[i]==1)
+
+plot(prob_pres[[2]])
+i <- po_model_data$sp=="b"
+points(po_model_data[i, c("x", "y")], pch=21, bg=po_model_data$pa[i]==1)
+
+### with bias, travel time
+n_samples <- 300
+pa_tab <- generate_data_tabular(n_samples, bias, prob_pres=prob_pres, weighted=TRUE)
+write.csv(pa_tab,
+          file = "data/tabular/hglm_pa_tab_data_med_biased.csv",
+          row.names = FALSE)
+
+plot(bias, main="Biased Sample Locations")
+points(pa_tab$x, pa_tab$y, pch = 16)
+
+# number of complex data points
+n_cp <- round(n_samples*2/3)
+pa_model_data <- generate_model_data(n_samples, n_cp, pa_tab)
+
+write.csv(pa_model_data,
+          file = "data/tabular/hglm_pa_data_med_bias_23.csv",
+          row.names = FALSE)
+
+### with bias, species
+n_samples <- 300
+pa_tab <- generate_data_tabular(n_samples, sp_bias, prob_pres=prob_pres, weighted=TRUE)
+write.csv(pa_tab,
+          file = "data/tabular/hglm_pa_tab_data_med_spbiased.csv",
+          row.names = FALSE)
+
+plot(sp_bias, main="Biased Sample Locations")
+points(pa_tab$x, pa_tab$y, pch = 16)
+
+# number of complex data points
+n_cp <- round(n_samples*2/3)
+pa_model_data <- generate_model_data(n_samples, n_cp, pa_tab)
+
+write.csv(pa_model_data,
+          file = "data/tabular/hglm_pa_data_med_spbias_23.csv",
+          row.names = FALSE)
+
+
+# maximum number of samples
+n_samples <- 900
+pa_tab <- generate_data_tabular(n_samples, bias, prob_pres=prob_pres, weighted=TRUE)
+write.csv(pa_tab,
+          file = "data/tabular/hglm_pa_tab_data_max_biased.csv",
+          row.names = FALSE)
+
+plot(bias, main="Biased Sample Locations")
+points(pa_tab$x, pa_tab$y, pch = 16)
+
+n_cp <- round(n_samples*2/3)
+pa_model_data <- generate_model_data(n_samples, n_cp, pa_tab)
+
+# save these items
+write.csv(pa_model_data,
+          file = "data/tabular/hglm_pa_data_max_bias_23.csv",
+          row.names = FALSE)
+
+### presence-only data
+# random background but travel-biased data
+pa_model_data <- read_csv("data/tabular/hglm_pa_data_med_bias_23.csv")
+occurrence_coords <- pa_model_data[pa_model_data$pa==1,]
+
+# presence_only
+write.csv(
+  x = occurrence_coords,
+  file = "data/tabular/presence_only_data_biased_hgam.csv",
+  row.names = FALSE
+)
+
+po_model_data <- rbind(occurrence_coords, bind_cols(po_tab, covs_vals)) |>
+  mutate(sp = as.factor(sp))
+
+write.csv(
+  x = po_model_data,
+  file = "data/tabular/presence_only_data_biased_rbg_hgam.csv",
+  row.names = FALSE
+)
+
+plot(prob_pres[[1]])
+i <- pa_model_data$sp=="a"
+points(pa_model_data[i, c("x", "y")], pch=21, bg=pa_model_data$pa[i]==1)
+
+plot(bias)
+points(pa_model_data[i, c("x", "y")], pch=16)
+
+plot(prob_pres[[1]])
+i <- po_model_data$sp=="a"
+points(po_model_data[i, c("x", "y")], pch=21, bg=po_model_data$pa[i]==1)
+
+# random background but species-biased data
+pa_model_data <- read_csv("data/tabular/hglm_pa_data_med_spbias_23.csv")
+occurrence_coords <- pa_model_data[pa_model_data$pa==1,]
+
+# presence_only
+write.csv(
+  x = occurrence_coords,
+  file = "data/tabular/presence_only_data_spbiased_hgam.csv",
+  row.names = FALSE
+)
+
+po_model_data <- rbind(occurrence_coords, bind_cols(po_tab, covs_vals)) |>
+  mutate(sp = as.factor(sp))
+
+write.csv(
+  x = po_model_data,
+  file = "data/tabular/presence_only_data_spbiased_rbg_hgam.csv",
+  row.names = FALSE
+)
+
+plot(prob_pres[[1]])
+i <- pa_model_data$sp=="a"
+points(pa_model_data[i, c("x", "y")], pch=21, bg=pa_model_data$pa[i]==1)
+
+plot(sp_bias)
+points(pa_model_data[i, c("x", "y")], pch=16)
+
+plot(prob_pres[[1]])
+i <- po_model_data$sp=="a"
+points(po_model_data[i, c("x", "y")], pch=21, bg=po_model_data$pa[i]==1)
+
+
+# biased background and biased data
+# generating biased background points, travel-biased
+pa_model_data <- read_csv("data/tabular/hglm_pa_data_med_bias_23.csv")
+occurrence_coords <- pa_model_data[pa_model_data$pa==1,]
+n_bg_points <- 500
+biased_bg <- random_locations(bias,
+                              (n_sp+1)*n_bg_points)
+site_id <- seq(from=max(occurrence_coords$site_id), length.out=nrow(biased_bg))
+po_tab <- tibble()
+po_tab <- bind_cols(
+    site_id=site_id,
+    as_tibble(crds(biased_bg)),
+    tibble(
+      pa=0,
+      sp=rep(c(letters[1:n_sp], "x"), length.out=nrow(biased_bg)),
+      not_complex = ifelse(sp == "x", 0, 1)
+    )
+  )
+
+
+covs_vals <- extract(x=covs, y=crds(biased_bg)) |> select(-any_of(c("not_complex", "sp")))
+po_model_data <- rbind(occurrence_coords, bind_cols(po_tab, covs_vals)) |>
+  mutate(sp = as.factor(sp))
+
+write.csv(
+  x = po_model_data,
+  file = "data/tabular/presence_only_data_biased_bbg_hgam.csv",
+  row.names = FALSE
+)
+
+plot(prob_pres[[1]])
+i <- pa_model_data$sp=="a"
+points(pa_model_data[i, c("x", "y")], pch=21, bg=pa_model_data$pa[i]==1)
+
+plot(bias)
+points(pa_model_data[i, c("x", "y")], pch=16)
+
+plot(prob_pres[[1]])
+i <- po_model_data$sp=="a"
+points(po_model_data[i, c("x", "y")], pch=21, bg=po_model_data$pa[i]==1)
+
+plot(prob_pres[[2]])
+i <- po_model_data$sp=="b"
+points(po_model_data[i, c("x", "y")], pch=21, bg=po_model_data$pa[i]==1)
+
+
+# species-biased
+pa_model_data <- read_csv("data/tabular/hglm_pa_data_med_spbias_23.csv")
+occurrence_coords <- pa_model_data[pa_model_data$pa==1,]
+n_bg_points <- 500
+biased_bg <- random_locations(sp_bias,
+                              (n_sp+1)*n_bg_points)
+site_id <- seq(from=max(occurrence_coords$site_id), length.out=nrow(biased_bg))
+po_tab <- tibble()
+po_tab <- bind_cols(
+  site_id=site_id,
+  as_tibble(crds(biased_bg)),
+  tibble(
+    pa=0,
+    sp=rep(c(letters[1:n_sp], "x"), length.out=nrow(biased_bg)),
+    not_complex = ifelse(sp == "x", 0, 1)
+  )
+)
+
+
+covs_vals <- extract(x=covs, y=crds(biased_bg)) |> select(-any_of(c("not_complex", "sp")))
+po_model_data <- rbind(occurrence_coords, bind_cols(po_tab, covs_vals)) |>
+  mutate(sp = as.factor(sp))
+
+write.csv(
+  x = po_model_data,
+  file = "data/tabular/presence_only_data_spbiased_bbg_hgam.csv",
+  row.names = FALSE
+)
+
+plot(prob_pres[[1]])
+i <- pa_model_data$sp=="a"
+points(pa_model_data[i, c("x", "y")], pch=21, bg=pa_model_data$pa[i]==1)
+
+plot(sp_bias)
+points(pa_model_data[i, c("x", "y")], pch=16)
+
+plot(prob_pres[[1]])
+i <- po_model_data$sp=="a"
+points(po_model_data[i, c("x", "y")], pch=21, bg=po_model_data$pa[i]==1)
+
+plot(prob_pres[[2]])
+i <- po_model_data$sp=="b"
+points(po_model_data[i, c("x", "y")], pch=21, bg=po_model_data$pa[i]==1)
+
+
+## if there is only bias in the complex data, presence-absence
+n_samples <- 900
+bias <- prob_pres[[3]]
+n_cp <- round(n_samples*2/3)
+pa_model_data <- read_csv("data/tabular/hglm_pa_data_max_nobias_23.csv")
+pa_tab_complex <- generate_data_tabular(n_cp, bias, prob_pres)
+pa_model_complex <- generate_model_data(n_cp, n_cp, pa_tab_complex)
+pa_model_data[1:n_cp,] <- pa_model_complex
+write.csv(pa_model_data,
+          file = "data/tabular/hglm_pa_data_max_cbias_23.csv",
+          row.names = FALSE)
+
+## if there is only bias in the complex data, presence-only
+n_bg_points <- 500
+biased_bg <- random_locations(bias,
+                              (n_sp+1)*n_bg_points)
+site_id <- seq(from=max(occurrence_coords$site_id), length.out=nrow(biased_bg))
+po_tab <- bind_cols(
+  site_id=site_id,
+  as_tibble(crds(biased_bg)),
+  tibble(
+    pa=0,
+    sp=rep(c(letters[1:n_sp], "x"), length.out=nrow(biased_bg)),
+    not_complex = ifelse(sp == "x", 0, 1)
+  )
+)
+
+covs_vals <- extract(x=covs, y=crds(biased_bg)) |> select(-any_of(c("not_complex", "sp")))
+po_model_data <- rbind(occurrence_coords, bind_cols(po_tab, covs_vals)) |>
+  mutate(sp = as.factor(sp))
+
+write.csv(
+  x = po_model_data,
+  file = "data/tabular/presence_only_data_cbias.csv",
+  row.names = FALSE
+)
+
