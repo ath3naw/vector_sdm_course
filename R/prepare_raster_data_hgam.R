@@ -5,7 +5,7 @@ library(geodata)
 library(gratia)
 library(dplyr)
 source("R/functions.R")
-
+set.seed(126)
 par(mfrow = c(1,1))
 covs <- terra::rast("data/grids/covariates.tif")
 mad_mask <- terra::rast("data/grids/mad_mask.tif")

@@ -425,25 +425,64 @@ generate_data_tabular <- function(n_samples, bias, prob_pres, n_sp = 10, weighte
 
 generate_model_data <- function(n_samples, n_cp, pa_tab, n_sp=10){
   pa_tab_1 <- pa_tab[1:n_cp,] |>
-    select(site_id, x, y, complex) |>
+    dplyr::select(site_id, x, y, complex) |>
     rename(pa = complex) |>
     mutate(sp = "x")
   if(n_cp<n_samples){
     pa_tab_2 <- pa_tab[(n_cp+1):n_samples,] |>
-      select(-complex) |>
+      dplyr::select(-complex) |>
       pivot_longer(cols = letters[1:n_sp], names_to = "sp", values_to = "pa")
   }else{
     pa_tab_2 <- NULL
   }
   pa_long <- rbind(pa_tab_1, pa_tab_2) |>
     mutate(not_complex = ifelse(sp == "x", 0, 1))
-  covs_vals <- extract(x=covs, y=pa_long |> select(x, y))
-  covs_vals <- covs_vals |> select(-any_of(c("sp","not_complex")))
-  pa_model_data <- cbind(pa_long, covs_vals) |> select(-ID) |>
+  covs_vals <- extract(x=covs, y=pa_long |> dplyr::select(x, y))
+  covs_vals <- covs_vals |> dplyr::select(-any_of(c("sp","not_complex")))
+  pa_model_data <- cbind(pa_long, covs_vals) |> dplyr::select(-ID) |>
     mutate(sp = as.factor(sp))
   pa_model_data
 }
 
+compute_mse <- function(true_prob, pred_prob){
+  resid <- (pred_prob-true_prob)^2
+  as.numeric(global(resid, fun="mean", na.rm=TRUE))
+}
 
+# compute_rel_abund_rmse <- function(true_prob, pred_prob, max_catch_size){
+#   true_rel_abund <- -(log(1-true_prob)/max_catch_size)
+#   pred_rel_abund <- -(log(1-pred_prob)/max_catch_size)
+#   resid <- (pred_rel_abund-true_rel_abund)^2
+#   mse <- as.numeric(global(resid, fun="mean", na.rm=TRUE))
+#   rmse <- sqrt(mse)
+#   rmse
+# }
 
+# compute_performance <- function(true_prob, pred_prob){
+#   true_perf <- ifel(true_prob>0.75, 1, 0)
+#   pred_perf <- ifel(pred_prob>0.75, 1, 0)
+#   resid <- abs(true_perf-pred_perf)
+#   as.numeric(global(resid, fun="mean", na.rm=TRUE))
+# }
 
+inverse_probit <- function(true_prob, pred_prob){
+  clip_range <- function(x){
+    pmin(pmax(x, 1e-10), 1-1e-10)
+  }
+  true_inverse <- app(true_prob, function(x) qnorm(clip_range(x)))
+  pred_inverse <- app(pred_prob, function(x) qnorm(clip_range(x)))
+  resid <- (pred_inverse-true_inverse)^2
+  as.numeric(global(resid, fun="mean", na.rm=TRUE))
+}
+
+compute_cor <- function(true_prob, pred_prob){
+  corr <- layerCor(c(true_prob, pred_prob), "pearson", na.rm=TRUE)$correlation
+  corr[1,2]
+}
+
+compute_cor_po <- function(true_prob, pred_prob){
+  v1 <- values(true_prob)
+  v2 <- values(pred_prob)
+  corr <- cor(v1, v2, method="spearman", use="complete.obs")
+  corr[1,1]
+}
