@@ -591,3 +591,9 @@ clean_coords <- function(x){
     return(as.numeric(x))
   }
 }
+
+make_long <- function(df, type) {
+  df %>%
+    pivot_longer(cols = everything(), names_to = "Model", values_to = "Correlation") %>%
+    mutate(Type = type)
+}

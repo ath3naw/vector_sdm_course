@@ -1,7 +1,7 @@
 # preparing data part 2
 
 # should run without part 1 if data/grids/ contains the below rasters.
-# as an alternative to runnning script preparing_data_1.R, grids can be
+# as an alternative to running script preparing_data_1.R, grids can be
 # downloaded into data/grids from:
 # https://doi.org/10.26188/21630146.v1 
 # you can do this manually or work out how to in R!
@@ -12,8 +12,8 @@ library(terra)
 source("R/functions.R")
 
 # read our rasters in
-kenya_mask <- terra::rast("data/grids/kenya_mask.tif")
-bc_kenya <- terra::rast("data/grids/bc_kenya.tif")
+mad_mask <- terra::rast("data/grids/mad_mask.tif")
+bc_mad <- terra::rast("data/grids/bc_mad.tif")
 rescale_travel <- terra::rast("data/grids/rescale_travel.tif")
 bias <- rescale_travel ^ 2
 
@@ -27,8 +27,10 @@ bias <- rescale_travel ^ 2
 # sample biased and environmentally specific ones from rescale_travel
 # and some bioclim variables
 
+par(mfrow=c(1,1))
+
 # make two sets of fake species, with different numbers of points
-n_species_each <- 10
+n_species_each <- 10 # 10 different species
 widespread_species_n_points <- 10 + rpois(n_species_each, rlnorm(n_species_each, 5, 1))
 focal_species_n_points <- 10 + rpois(n_species_each, rlnorm(n_species_each, 5, 1))
 
@@ -40,10 +42,10 @@ widespread_all_points <- terra::spatSample(bias,
                                            na.rm = TRUE,
                                            as.points = TRUE)
 
-# plot(bias)
-# points(widespread_all_points, cex = 0.2)
+plot(bias) # see overall bias
+points(widespread_all_points, cex = 0.2)
 
-# label them randomly acorrding to different species
+# label them randomly according to different species
 widespread_df <- widespread_all_points %>%
   crds() %>%
   as_tibble() %>%
@@ -62,14 +64,14 @@ focal_df <- tibble(x = numeric(0),
                    type = character(0))
 
 for(i in seq_len(n_species_each)) {
-  
-  which_bioclim <- sample.int(dim(bc_kenya)[3], 1)
-  layer <- bc_kenya[[which_bioclim]] * bias
+  # selecting 1 of the bioclim layers (dim(bc_mad)[3])
+  which_bioclim <- sample.int(dim(bc_mad)[3], 1)
+  layer <- bc_mad[[which_bioclim]] * bias
   
   layer[] <- layer[] - min(layer[], na.rm = TRUE)
   layer[] <- layer[]/ max(layer[], na.rm = TRUE)
   
-  # simulate all the widespread ones just from the bias layer
+  # simulate all the focal ones from different bias layers
   one_focal_species_points <- terra::spatSample(layer,
                                                 focal_species_n_points[i],
                                                 method = "weights",
@@ -95,3 +97,4 @@ write_csv(
   x = species_df,
   file = "data/tabular/species_df.csv"
 )
+

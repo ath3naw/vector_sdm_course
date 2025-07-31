@@ -486,3 +486,9 @@ compute_cor_po <- function(true_prob, pred_prob){
   corr <- cor(v1, v2, method="spearman", use="complete.obs")
   corr[1,1]
 }
+
+make_long <- function(df, type) {
+  df %>%
+    pivot_longer(cols = everything(), names_to = "Model", values_to = "Correlation") %>%
+    mutate(Type = type)
+}

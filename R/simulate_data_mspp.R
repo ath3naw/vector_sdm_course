@@ -18,6 +18,8 @@ ttemp <- bc_mad[[1]]
 tiso <- bc_mad[[3]]
 # BIO4 = Temperature Seasonality (standard deviation ×100)
 tseas <- bc_mad[[4]] 
+# BIO8 = Mean Temperature of Wettest Quarter
+twet <- bc_mad[[8]]
 # BIO12 = Annual Precipitation
 pprec <- bc_mad[[12]]
 # BIO15 = Precipitation Seasonality (Coefficient of Variation)
@@ -25,21 +27,20 @@ pseas <- bc_mad[[15]]
 # BIO18 = Precipitation of Warmest Quarter
 pwarm <- bc_mad[[18]]
 
-covs <- c(ttemp, tiso, tseas, pprec, pseas, pwarm)
-names(covs) <- c("ttemp", "tiso", "tseas", "pprec", "pseas", "pwarm")
+covs <- c(ttemp, tiso, tseas, twet, pprec, pseas, pwarm)
+names(covs) <- c("ttemp", "tiso", "tseas", "twet", "pprec", "pseas", "pwarm")
 
 writeRaster(covs,
             "data/grids/covs_mspp.tif",
             overwrite = TRUE)
 
 # bias layer
-# DON'T DO BIAS YET
-#bias <- rescale_travel ^ 2
-#names(bias) <- "bias"
+bias <- rescale_travel ^ 2
+names(bias) <- "bias"
 
-# writeRaster(bias,
-#             "data/grids/bias_mspp.tif",
-#             overwrite = TRUE)
+writeRaster(bias,
+            "data/grids/bias_mspp.tif",
+            overwrite = TRUE)
 
 # generate the fake 'true' relative abundance raster for the target species
 
@@ -56,16 +57,19 @@ writeRaster(covs,
 
 rel_abund_unscaled <- exp(-1 +
                             (covs$ttemp-15) *  0.04   +
-                            (covs$ttemp-21) ^ 2 * -0.05 +
+                            (covs$ttemp-24) ^ 2 * -0.05 +
                             (covs$tiso) *  0.02   +
                             (covs$tseas) *  -0.005   +
+                            (covs$twet-20) * 0.09 +
+                            (covs$twet-24) ^ 2 * -0.08 +
                             (covs$pprec-800) * 0.004 +
                             (covs$pprec-700) ^ 2 * -0.000002 +
                             (covs$pseas-10) *  0.02   +
                             (covs$pseas-60) ^ 2 *-0.0007 +
                             (covs$pwarm-400) * 0.002 +
                             (covs$pwarm-800)^2 * -0.000005
-                            )
+)
+par(mfrow=c(1,1))
 
 # rescale the relative abundance, from 0 to 1
 rel_abund <- rescale_abundance(rel_abund_unscaled)
@@ -73,10 +77,9 @@ names(rel_abund) <- "relative_abundance"
 plot(rel_abund)
 
 # sample abundance data at a random set of locations
-n_samples <- 100
+n_samples <- 500
 
 # random locations all over the country - unweighted sampling
-set.seed(126)
 sample_locations_random <- random_locations(mad_mask,
                                             n_samples,
                                             weighted = FALSE)
@@ -84,10 +87,9 @@ plot(rel_abund)
 points(sample_locations_random)
 
 # simulate PA data
-set.seed(32)
 catches_random <- sim_catches(sample_locations = sample_locations_random,
                               relative_abundance = rel_abund,
-                              max_average_catch_size = 10)
+                              max_average_catch_size = 68)
 catches_random
 points(catches_random, pch=21, bg=catches_random$presence)
 # # another way to do it
@@ -96,13 +98,13 @@ points(catches_random, pch=21, bg=catches_random$presence)
 
 # simulate PO data
 prob_present <- probability_of_presence(rel_abund,
-                                        max_average_catch_size = 10)
+                                        max_average_catch_size = 68)
 names(prob_present) <- "prob_present"
 
 reported_occurrence_rate <- prob_present * bias
 names(reported_occurrence_rate) <- "reported_occurrence_rate"
 
-n_occurrences <- 300
+n_occurrences <- 366
 sample_locations_bias_weighted <- random_locations(reported_occurrence_rate,
                                                    n_occurrences)
 
@@ -167,7 +169,7 @@ for(i in seq_len(n_species_each)) {
   prob_pres <- app(rnorm(1) * scale(covs[[which_cov]]), plogis)
   rep_occ_rate <- prob_pres * bias
   
-  # simulate presence ony data
+  # simulate presence only data
   one_focal_species_occ_points <- terra::spatSample(rep_occ_rate,
                                                     focal_species_n_points[i],
                                                     method = "weights",
@@ -217,3 +219,4 @@ write.csv(focal_occ_df,
 write.csv(focal_pa_tabular,
           file = "data/tabular/other_species_pa_data.csv",
           row.names = FALSE)
+
