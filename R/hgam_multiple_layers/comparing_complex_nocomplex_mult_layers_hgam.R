@@ -112,7 +112,7 @@ covs$not_complex <- 1
 mse <- data.frame(CP = 0, NoCP=0)
 cor <- data.frame(CP = 0, NoCP=0)
 for(i in 1:num_species){
-  covs$sp <- i
+  covs$sp <- factor(i)
   cp <- species[i, 2]
   for(j in 1:n_cp){
     covs[[paste0("complex", j)]] <- 0
@@ -180,16 +180,14 @@ pa_model_data_allbiased_nocp <- read_csv("data/tabular/hgam_multiple_layers/hgam
 pa_model_data_allbiased_nocp$sp <- as.factor(pa_model_data_allbiased_nocp$sp)
 
 
-mos_modGS_allbiased <- gam(pa ~ te(ttemp, pprec, bs=c("tp", "tp")) + 
-                          t2(ttemp, pprec, sp, bs=c("tp", "tp", "re"),
-                             by=not_complex), 
+mos_modGS_allbiased <- gam(formula = full_formula, 
                         data = pa_model_data_allbiased, 
+                        optimizer=c("outer", "bfgs"), 
                         family = "binomial", 
                         method = "REML")
-mos_modGS_allbiased_nocp <- gam(pa ~ te(ttemp, pprec, bs=c("tp", "tp")) + 
-                               t2(ttemp, pprec, sp, bs=c("tp", "tp", "re"),
-                                  by=not_complex), 
+mos_modGS_allbiased_nocp <- gam(formula=full_formula, 
                              data = pa_model_data_allbiased_nocp, 
+                             optimizer=c("outer", "bfgs"), 
                              family = "binomial", 
                              method = "REML")
 
@@ -244,7 +242,7 @@ covs$not_complex <- 1
 mse <- data.frame(CP = 0, NoCP=0)
 cor <- data.frame(CP = 0, NoCP=0)
 for(i in 1:num_species){
-  covs$sp <- i
+  covs$sp <- factor(i)
   cp <- species[i, 2]
   for(j in 1:n_cp){
     covs[[paste0("complex", j)]] <- 0
@@ -306,27 +304,27 @@ round(k.check(mos_modGS),2)
 round(k.check(mos_modGS_nocp),2)
 
 ### presence-only data!
-po_model_data <- read_csv("data/tabular/presence_only_data_rbg_hgam.csv")
+po_model_data <- read_csv("data/tabular/hgam_multiple_layers/presence_only_data_rbg_hgam.csv")
 po_model_data$sp <- as.factor(po_model_data$sp)
-po_model_data_nocp <- read_csv("data/tabular/presence_only_data_rbg_hgam_nocp.csv")
+po_model_data_nocp <- read_csv("data/tabular/hgam_multiple_layers/hgam_po_data_med_nocp.csv")
 po_model_data_nocp$sp <- as.factor(po_model_data_nocp$sp)
 
 ## unbiased
-mos_modGS_rbg <- gam(pa ~ te(ttemp, pprec, bs=c("tp", "tp")) + 
-                       t2(ttemp, pprec, sp, bs=c("tp", "tp", "re"),
-                          by=not_complex), 
+mos_modGS_rbg <- gam(formula=full_formula, 
                      data = po_model_data, 
+                     optimizer=c("outer", "bfgs"),
                      family = "binomial", 
                      method = "REML")
-mos_modGS_rbg_nocp <- gam(pa ~ te(ttemp, pprec, bs=c("tp", "tp")) + 
-                            t2(ttemp, pprec, sp, bs=c("tp", "tp", "re"),
-                               by=not_complex), 
+mos_modGS_rbg_nocp <- gam(formula=full_formula, 
                           data = po_model_data_nocp, 
+                          optimizer=c("outer", "bfgs"),
                           family = "binomial", 
                           method = "REML")
 
 covs$not_complex <- 0
-covs$sp <- "x"
+covs$sp <- "group"
+covs$complex1 <- 0
+covs$complex2 <- 0
 # specify the species
 pred_po_modGS_group <- sdm_predict(
   model = mos_modGS_rbg,
@@ -365,18 +363,17 @@ for(i in 1:n_cp){
   )
   par(mfrow=c(2,2))
   plot(complex_prob_pres[[i]], main = "True Prob of Pres")
-  plot(pred_po_modGS_complex[[i]], main = paste("Complex", i, "- unbiased CP"), range=c(0,1))
-  plot(pred_po_modGS_complex_nocp[[i]], main = paste("Complex", i, "- unbiased No CP"), range=c(0,1))  
+  plot(pred_po_modGS_complex[[i]], main = paste("Complex", i, "- unbiased CP"))
+  plot(pred_po_modGS_complex_nocp[[i]], main = paste("Complex", i, "- unbiased No CP"))  
 }
 
 # species
 pred_po_modGS_sp <- rast(rep(mad_mask, num_species))
 pred_po_modGS_sp_nocp <- rast(rep(mad_mask, num_species))
 covs$not_complex <- 1
-mse <- data.frame(CP = 0, NoCP=0)
 cor <- data.frame(CP = 0, NoCP=0)
 for(i in 1:num_species){
-  covs$sp <- i
+  covs$sp <- factor(i)
   cp <- species[i, 2]
   for(j in 1:n_cp){
     covs[[paste0("complex", j)]] <- 0
@@ -393,14 +390,11 @@ for(i in 1:num_species){
   )
   par(mfrow=c(2,2))
   plot(prob_pres_sp[[i]], main = "True Prob of Pres")
-  plot(pred_po_modGS_sp[[i]], main = paste("Species", i, "- unbiased CP"), range=c(0,1))
-  plot(pred_po_modGS_sp_nocp[[i]], main = paste("Species", i, "- unbiased No CP"), range=c(0,1))
-  mse[i, 1] <- inverse_probit(prob_pres_sp[[i]], pred_po_modGS_sp[[i]])
-  mse[i, 2] <- inverse_probit(prob_pres_sp[[i]], pred_po_modGS_sp_nocp[[i]])
+  plot(pred_po_modGS_sp[[i]], main = paste("Species", i, "- unbiased CP"))
+  plot(pred_po_modGS_sp_nocp[[i]], main = paste("Species", i, "- unbiased No CP"))
   cor[i, 1] <- compute_cor(prob_pres_sp[[i]], pred_po_modGS_sp[[i]])
   cor[i, 2] <- compute_cor(prob_pres_sp[[i]], pred_po_modGS_sp_nocp[[i]])
 }
-mse
 cor
 
 par(mfrow=c(2,2))
@@ -439,163 +433,96 @@ round(k.check(mos_modGS_nocp),2)
 
 
 ## biased
-po_model_data_biased <- read_csv("data/tabular/presence_only_data_biased_rbg_hgam.csv")
-po_model_data_biased$sp <- as.factor(po_model_data_biased$sp)
-po_model_data_biased_nocp <- read_csv("data/tabular/presence_only_data_biased_rbg_hgam_nocp.csv")
-po_model_data_biased_nocp$sp <- as.factor(po_model_data_biased_nocp$sp)
-po_model_data_spbiased <- read_csv("data/tabular/presence_only_data_spbiased_rbg_hgam.csv")
-po_model_data_spbiased$sp <- as.factor(po_model_data_spbiased$sp)
-po_model_data_spbiased_nocp <- read_csv("data/tabular/presence_only_data_spbiased_rbg_hgam_nocp.csv")
-po_model_data_spbiased_nocp$sp <- as.factor(po_model_data_spbiased_nocp$sp)
+po_model_data_allbiased <- read_csv("data/tabular/hgam_multiple_layers/presence_only_data_allbiased_rbg_hgam.csv")
+po_model_data_allbiased$sp <- as.factor(po_model_data_allbiased$sp)
+po_model_data_allbiased_nocp <- read_csv("data/tabular/hgam_multiple_layers/hgam_po_data_med_allbias_nocp.csv")
+po_model_data_allbiased_nocp$sp <- as.factor(po_model_data_allbiased_nocp$sp)
 
-mos_modGS_biased_rbg <- gam(pa ~ te(ttemp, pprec, bs=c("tp", "tp")) + 
-                              t2(ttemp, pprec, sp, bs=c("tp", "tp", "re"),
-                                 by=not_complex), 
-                            data = po_model_data_biased, 
+mos_modGS_allbiased_rbg <- gam(formula=full_formula, 
+                            data = po_model_data_allbiased, 
+                            optimizer=c("outer", "bfgs"), 
                             family = "binomial", 
                             method = "REML")
-mos_modGS_biased_rbg_nocp <- gam(pa ~ te(ttemp, pprec, bs=c("tp", "tp")) + 
-                                   t2(ttemp, pprec, sp, bs=c("tp", "tp", "re"),
-                                      by=not_complex), 
-                                 data = po_model_data_biased_nocp, 
+mos_modGS_allbiased_rbg_nocp <- gam(formula=full_formula, 
+                                 data = po_model_data_allbiased_nocp, 
+                                 optimizer=c("outer", "bfgs"), 
                                  family = "binomial", 
                                  method = "REML")
-mos_modGS_spbiased_rbg <- gam(pa ~ te(ttemp, pprec, bs=c("tp", "tp")) + 
-                                t2(ttemp, pprec, sp, bs=c("tp", "tp", "re"),
-                                   by=not_complex), 
-                              data = po_model_data_spbiased, 
-                              family = "binomial", 
-                              method = "REML")
-mos_modGS_spbiased_rbg_nocp <- gam(pa ~ te(ttemp, pprec, bs=c("tp", "tp")) + 
-                                     t2(ttemp, pprec, sp, bs=c("tp", "tp", "re"),
-                                        by=not_complex), 
-                                   data = po_model_data_spbiased_nocp, 
-                                   family = "binomial", 
-                                   method = "REML")
 
 covs$not_complex <- 0
-covs$sp <- "x"
+covs$complex1 <- 0
+covs$complex2 <- 0
+covs$sp <- "group"
 # specify the species
-pred_po_modGS_biased_group <- sdm_predict(
-  model = mos_modGS_biased_rbg,
+pred_po_modGS_allbiased_group <- sdm_predict(
+  model = mos_modGS_allbiased_rbg,
   covariates = covs
 )
-pred_po_modGS_biased_nocp_group <- sdm_predict(
-  model = mos_modGS_biased_rbg_nocp,
+pred_po_modGS_allbiased_nocp_group <- sdm_predict(
+  model = mos_modGS_allbiased_rbg_nocp,
   covariates = covs
 )
-pred_po_modGS_spbiased_group <- sdm_predict(
-  model = mos_modGS_spbiased,
-  covariates = covs
-)
-pred_po_modGS_spbiased_nocp_group <- sdm_predict(
-  model = mos_modGS_spbiased_rbg_nocp,
-  covariates = covs
-)
-
-par(mfrow=c(2,3))
-plot(group_prob_pres, main="Group Prob of Pres", range=c(0,1))
-plot(pred_po_modGS_biased_group, main="Dist W/ Complex - travel-biased")
-plot(pred_po_modGS_biased_nocp_group, main="Dist W/O Complex - travel-biased")
-plot(pred_po_modGS_spbiased_group, main="Dist W/ Complex - species-biased")
-plot(pred_po_modGS_spbiased_nocp_group, main="Dist W/O Complex - species-biased")
-
-
-pred_po_modGS_biased <- rast(rep(mad_mask, n_sp))
-pred_po_modGS_biased_nocp <- rast(rep(mad_mask, n_sp))
-pred_po_modGS_spbiased <- rast(rep(mad_mask, n_sp))
-pred_po_modGS_spbiased_nocp <- rast(rep(mad_mask, n_sp))
-covs$not_complex <- 1
-# Plot all species
-for(letter in letters[1:n_sp]){
-  covs$sp <- letter
-  i <- match(letter, letters)
-  pred_po_modGS_biased[[i]] <- sdm_predict(
-    model = mos_modGS_biased_rbg,
-    covariates = covs
-  )
-  pred_po_modGS_biased_nocp[[i]] <- sdm_predict(
-    model = mos_modGS_biased_rbg_nocp,
-    covariates = covs
-  )
-  pred_po_modGS_spbiased[[i]] <- sdm_predict(
-    model = mos_modGS_spbiased_rbg,
-    covariates = covs
-  )
-  pred_po_modGS_spbiased_nocp[[i]] <- sdm_predict(
-    model = mos_modGS_spbiased_rbg_nocp,
-    covariates = covs
-  )
-  par(mfrow=c(2,3))
-  plot(prob_pres[[i]], main = "True Prob of Pres", range=c(0,1))
-  plot(pred_po_modGS_biased[[i]], main = paste("Species", letter, "- travel biased CP"), range=c(0,1))
-  plot(pred_po_modGS_biased_nocp[[i]], main = paste("Species", letter, "- travel biased No CP"), range=c(0,1))
-  plot(pred_po_modGS_spbiased[[i]], main = paste("Species", letter, "- species biased CP"), range=c(0,1))
-  plot(pred_po_modGS_spbiased_nocp[[i]], main = paste("Species", letter, "- species biased No CP"), range=c(0,1))
-}
 
 par(mfrow=c(2,2))
+plot(group_prob_pres, main="Group Prob of Pres", range=c(0,1))
+plot(pred_po_modGS_allbiased_group, main="Dist W/ Complex - biased")
+plot(pred_po_modGS_allbiased_nocp_group, main="Dist W/O Complex - biased")
 
-partial_response_plot(
-  model = mos_modGS_biased,
-  data = pa_model_data_biased,
-  var = "ttemp",
-  # scale = "link"
-  scale = "response"
-)
-partial_response_plot(
-  model = mos_modGS_biased,
-  data = pa_model_data_biased,
-  var = "pprec",
-  # scale = "link"
-  scale = "response"
-)
-partial_response_plot(
-  model = mos_modGS_biased_nocp,
-  data = pa_model_data_biased_nocp,
-  var = "ttemp",
-  # scale = "link"
-  scale = "response"
-)
-partial_response_plot(
-  model = mos_modGS_biased_nocp,
-  data = pa_model_data_biased_nocp,
-  var = "pprec",
-  # scale = "link"
-  scale = "response"
-)
+# complex
+pred_po_modGS_allbiased_complex <- rast(rep(mad_mask, n_cp))
+pred_po_modGS_allbiased_complex_nocp <- rast(rep(mad_mask, n_cp))
+covs$not_complex <- 0
+for(i in 1:n_cp){
+  covs$sp <- paste0("complex", i)
+  for(j in 1:n_cp){
+    covs[[paste0("complex", j)]] <- 0
+  }
+  
+  # Set current complex to 1
+  covs[[paste0("complex", i)]] <- 1
+  pred_po_modGS_allbiased_complex[[i]] <- sdm_predict(
+    model = mos_modGS_allbiased_rbg,
+    covariates = covs
+  )
+  pred_po_modGS_allbiased_complex_nocp[[i]] <- sdm_predict(
+    model = mos_modGS_allbiased_rbg_nocp,
+    covariates = covs
+  )
+  par(mfrow=c(2,2))
+  plot(complex_prob_pres[[i]], main = "True Prob of Pres")
+  plot(pred_po_modGS_allbiased_complex[[i]], main = paste("Complex", i, "- unbiased CP"))
+  plot(pred_po_modGS_allbiased_complex_nocp[[i]], main = paste("Complex", i, "- unbiased No CP"))  
+}
 
+# species
+pred_po_modGS_allbiased_sp <- rast(rep(mad_mask, num_species))
+pred_po_modGS_allbiased_sp_nocp <- rast(rep(mad_mask, num_species))
+covs$not_complex <- 1
+cor <- data.frame(CP = 0, NoCP=0)
+for(i in 1:num_species){
+  covs$sp <- factor(i)
+  cp <- species[i, 2]
+  for(j in 1:n_cp){
+    covs[[paste0("complex", j)]] <- 0
+  }
+  # Set current complex to 1
+  covs[[paste0("complex", cp)]] <- 1
+  pred_po_modGS_allbiased_sp[[i]] <- sdm_predict(
+    model = mos_modGS_allbiased_rbg,
+    covariates = covs
+  )
+  pred_po_modGS_allbiased_sp_nocp[[i]] <- sdm_predict(
+    model = mos_modGS_allbiased_rbg_nocp,
+    covariates = covs
+  )
+  par(mfrow=c(2,2))
+  plot(prob_pres_sp[[i]], main = "True Prob of Pres")
+  plot(pred_po_modGS_alliased_sp[[i]], main = paste("Species", i, "- unbiased CP"))
+  plot(pred_po_modGS_allbiased_sp_nocp[[i]], main = paste("Species", i, "- unbiased No CP"))
+  cor[i, 1] <- compute_cor(prob_pres_sp[[i]], pred_po_modGS_allbiased_sp[[i]])
+  cor[i, 2] <- compute_cor(prob_pres_sp[[i]], pred_po_modGS_allbiased_sp_nocp[[i]])
+}
+cor
 
-partial_response_plot(
-  model = mos_modGS_spbiased,
-  data = pa_model_data_spbiased,
-  var = "ttemp",
-  # scale = "link"
-  scale = "response"
-)
-partial_response_plot(
-  model = mos_modGS_spbiased,
-  data = pa_model_data_spbiased,
-  var = "pprec",
-  # scale = "link"
-  scale = "response"
-)
-partial_response_plot(
-  model = mos_modGS_spbiased_nocp,
-  data = pa_model_data_spbiased_nocp,
-  var = "ttemp",
-  # scale = "link"
-  scale = "response"
-)
-partial_response_plot(
-  model = mos_modGS_spbiased_nocp,
-  data = pa_model_data_spbiased_nocp,
-  var = "pprec",
-  # scale = "link"
-  scale = "response"
-)
-
-round(k.check(mos_modGS_biased),2)
-round(k.check(mos_modGS_biased_nocp),2)
-round(k.check(mos_modGS_spbiased),2)
-round(k.check(mos_modGS_spbiased_nocp),2)
+round(k.check(mos_modGS_allbiased_rbg),2)
+round(k.check(mos_modGS_allbiased_rbg_nocp),2)
