@@ -7,12 +7,14 @@ library(dplyr)
 library(mgcv)
 source("R/hgam_multiple_layers/functions_multiple.R")
 
+# load in variables
 par(mfrow = c(1,1))
 covs <- terra::rast("data/grids/covariates.tif")
 mad_mask <- terra::rast("data/grids/mad_mask.tif")
 bc_mad <- terra::rast("data/grids/bc_mad.tif")
 bias <- terra::rast("data/grids/bias.tif")
 
+# define numbers/initializing variables
 n_cp <- 2
 n_sp <- c(5,7)
 n_sp <- data.frame(n_sp)
@@ -20,6 +22,7 @@ write.csv(n_sp,
           file = "data/tabular/hgam_multiple_layers/n_sp",
           row.names = FALSE)
 
+# max catch size of mosquitoes - 20
 max_catch_size <- 20
 
 # group level model
@@ -44,6 +47,8 @@ group_abund <- exp(beta_group["int"]+beta_group["ttemp"]*covs$ttemp+beta_group["
 #beta_group["pseas"]*covs$pseas+beta_group["pseas2"]*(covs$pseas-cons_group["pseas"])^2+
 #beta_group["pwarm"]*covs$pwarm+beta_group["pwarm2"]*(covs$pwarm-cons_group["pwarm"])^2)
 plot(group_abund)
+
+# getting probability of presence
 rel_group_abund <- rescale_abundance(group_abund)
 names(rel_group_abund) <- "relative_abundance"
 plot(rel_group_abund, main="Relative Abundance")
@@ -55,13 +60,15 @@ writeRaster(group_prob_pres,
             overwrite = TRUE)
 # number of simulations
 n <- 10
+
+# initialize variables for the correlations
 cor_unbiased <- vector("list", length=n)
 cor_allbiased <- vector("list", length=n)
 cor_po_unbiased <- vector("list", length=n)
 cor_po_allbiased <- vector("list", length=n)
 all_bias <- mad_mask
 
-# should start from 1, but don't want to run more
+# running n number of simulations
 for(x in 1:n){
   # complex-level deviations
   complex_data <- data.frame(
@@ -121,6 +128,8 @@ for(x in 1:n){
     )
   }
   species_data <- cbind(species_id = 1:nrow(species_data), species_data)
+  
+  # creating a data frame to match the species_data to the complex data it is correlated with
   complex_match <- match(species_data$complex, complex_data$complex)
   cpx <- complex_data[complex_match,]
   
@@ -142,6 +151,7 @@ for(x in 1:n){
               "data/grids/hgam_multiple_layers/spec_prob_pres_hgam.tif",
               overwrite = TRUE)
   
+  #getting the covs_bounds for the partial-response plots and later use
   covs_bounds <- data.frame(
     variable = names(covs),
     min = covs_bounds <- data.frame(
@@ -151,10 +161,12 @@ for(x in 1:n){
     )
   )
   
+  # getting means of the covariate rasters
   covs_means <- global(covs, "mean", na.rm=TRUE)[, 1]
   covs_means <- as.data.frame(t(covs_means))
   names(covs_means) <- names(covs)
   
+  # find "rarest" species
   means <- global(rel_species_abund, "mean", na.rm = TRUE)[, 1]
   i <- which.min(means)
   sp_bias <- prob_pres[[i]]
@@ -163,6 +175,7 @@ for(x in 1:n){
               overwrite = TRUE)
   all_bias <- bias*sp_bias
   
+  #number of samples similar to leuco data
   n_samples <- 149
   num_species <- nlyr(prob_pres_sp)
   
@@ -171,18 +184,18 @@ for(x in 1:n){
             file = "data/tabular/hgam_multiple_layers/hgam_pa_tab_data_med.csv",
             row.names = FALSE)
   
-  ## picking number of complex points, etc.
+  # picking number of complex points, etc.
   n_group <- 49
   n_complex <- c(49, 73)
   
   pa_model_data <- generate_model_data(n_samples, n_group, n_complex, n_cp, n_sp, pa_tab)
   
-  # save these items
+  # save these items - unbiased ###################################################
   write.csv(pa_model_data,
             file = "data/tabular/hgam_multiple_layers/hgam_pa_data_med_nobias.csv",
             row.names = FALSE)
   
-  # no complex
+  # no complex $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
   pa_model_data <- read_csv("data/tabular/hgam_multiple_layers/hgam_pa_data_med_nobias.csv")
   pa_model_data <- pa_model_data[!pa_model_data$sp %in% c("complex1", "complex2"),]
   write.csv(
@@ -191,7 +204,7 @@ for(x in 1:n){
     row.names = FALSE
   )
   
-  # species-only
+  # species-only $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
   pa_model_data <- read_csv("data/tabular/hgam_multiple_layers/hgam_pa_data_med_nobias.csv")
   pa_model_data <- pa_model_data[!pa_model_data$sp %in% c("group", "complex1", "complex2"),]
   write.csv(
@@ -200,7 +213,7 @@ for(x in 1:n){
     row.names = FALSE
   )
   
-  ### with bias, all bias
+  ### with bias, all bias #########################################################
   pa_tab <- generate_data_tabular(n_samples, all_bias, prob_pres=prob_pres_sp, n_sp=n_sp, weighted=TRUE)
   write.csv(pa_tab,
             file = "data/tabular/hgam_multiple_layers/hgam_pa_tab_data_med_allbiased.csv",
@@ -210,6 +223,7 @@ for(x in 1:n){
   points(pa_tab$x, pa_tab$y, pch = 16)
   
   # number of complex data points
+  # all data ####################################################################
   pa_model_data <- generate_model_data(n_samples, n_group, n_complex, n_cp, n_sp, pa_tab)
   
   write.csv(pa_model_data,
@@ -217,6 +231,8 @@ for(x in 1:n){
             row.names = FALSE)
   
   pa_model_data <- read_csv("data/tabular/hgam_multiple_layers/hgam_pa_data_med_allbias.csv")
+  
+  # no complex ##################################################################
   pa_model_data <- pa_model_data[!pa_model_data$sp %in% c("complex1", "complex2"),]
   write.csv(
     x = pa_model_data,
@@ -224,6 +240,7 @@ for(x in 1:n){
     row.names = FALSE
   )
   
+  # species only ################################################################
   pa_model_data <- read_csv("data/tabular/hgam_multiple_layers/hgam_pa_data_med_allbias.csv")
   pa_model_data <- pa_model_data[!pa_model_data$sp %in% c("group", "complex1", "complex2"),]
   write.csv(
@@ -233,26 +250,34 @@ for(x in 1:n){
   )
   
   
-  ### presence-only data
-  ## unbiased data
+  ### presence-only data ********************************************************
+  ## unbiased data ##############################################################
   pa_model_data <- read_csv("data/tabular/hgam_multiple_layers/hgam_pa_data_med_nobias.csv")
   occurrence_coords <- pa_model_data[pa_model_data$pa==1,]
   plot(prob_pres[[1]])
   points(occurrence_coords[occurrence_coords$sp==1,]$x, occurrence_coords[occurrence_coords$sp==1,]$y, pch=16)
-  # presence_only
+
   write.csv(
     x = occurrence_coords,
     file = "data/tabular/hgam_multiple_layers/presence_only_data_hgam.csv",
     row.names = FALSE
   )
   
+  # picking number of background points for accuracy + speed
   n_bg_points <- 175
+  # number of groups = 12 species + 2 complexes + 1 group = 15
   num_groups <- 15
+  
+  # adjusting + adding data for background points
   random_bg <- random_locations(mad_mask,
                                 n_bg_points)
   site_id <- seq(from=max(occurrence_coords$site_id)+1, length.out=nrow(random_bg))
+  
+  # checking background
   plot(mad_mask)
   points(random_bg)
+  
+  # adjusting data formatting
   complex_names <- paste0("complex", 1:n_cp)
   po_tab <- tibble()
   for(i in c(1:num_species, complex_names, "group")){
@@ -274,8 +299,11 @@ for(x in 1:n){
     j <- j+n_sp[i,]
   }
   
+  # getting covariate values
   covs_vals <- extract(x=covs, y=crds(random_bg)) |> select(-any_of(c("not_complex", "sp", "complex1", "complex2")))
   covs_vals <- bind_rows(replicate(num_groups, covs_vals, simplify=FALSE))
+  
+  # combining all data into model_data format
   po_model_data <- rbind(occurrence_coords, bind_cols(po_tab, covs_vals)) |>
     mutate(sp = as.factor(sp))
   
@@ -285,11 +313,11 @@ for(x in 1:n){
     row.names = FALSE
   )
   
-  # biased
+  # biased ######################################################################
   pa_model_data <- read_csv("data/tabular/hgam_multiple_layers/hgam_pa_data_med_allbias.csv")
   occurrence_coords <- pa_model_data[pa_model_data$pa==1,]
   
-  # presence_only
+  # presence_only ***************************************************************
   write.csv(
     x = occurrence_coords,
     file = "data/tabular/hgam_multiple_layers/presence_only_data_allbiased_hgam.csv",
@@ -306,7 +334,7 @@ for(x in 1:n){
   )
   
   # use only species-data, no complex data
-  # unbiased po
+  # unbiased po #################################################################
   po_model_data <- read_csv("data/tabular/hgam_multiple_layers/presence_only_data_rbg_hgam.csv")
   po_model_data <- po_model_data[!po_model_data$sp %in% c("complex1", "complex2"),]
   write.csv(
@@ -314,7 +342,7 @@ for(x in 1:n){
     file = "data/tabular/hgam_multiple_layers/hgam_po_data_med_gp.csv",
     row.names = FALSE
   )
-  # biased po
+  # biased po ###################################################################
   po_model_data <- read_csv("data/tabular/hgam_multiple_layers/presence_only_data_allbiased_rbg_hgam.csv")
   po_model_data <- po_model_data[!po_model_data$sp %in% c("complex1", "complex2"),]
   write.csv(
@@ -323,7 +351,7 @@ for(x in 1:n){
     row.names = FALSE
   )
   
-  # unbiased po
+  # unbiased po #################################################################
   po_model_data <- read_csv("data/tabular/hgam_multiple_layers/presence_only_data_rbg_hgam.csv")
   po_model_data <- po_model_data[!po_model_data$sp %in% c("group", "complex1", "complex2"),]
   write.csv(
@@ -331,7 +359,7 @@ for(x in 1:n){
     file = "data/tabular/hgam_multiple_layers/hgam_po_data_med_nocp.csv",
     row.names = FALSE
   )
-  # biased po
+  # biased po ###################################################################
   po_model_data <- read_csv("data/tabular/hgam_multiple_layers/presence_only_data_allbiased_rbg_hgam.csv")
   po_model_data <- po_model_data[!po_model_data$sp %in% c("group", "complex1", "complex2"),]
   write.csv(
@@ -340,7 +368,8 @@ for(x in 1:n){
     row.names = FALSE
   )
   
-  ###
+  ### modeling ******************************************************************
+  # loading in variables
   prob_pres_sp <- terra::rast("data/grids/hgam_multiple_layers/spec_prob_pres_hgam.tif")
   prob_pres_cp <- terra::rast("data/grids/hgam_multiple_layers/complex_prob_pres_hgam.tif")
   covs <- terra::rast("data/grids/covariates.tif")
@@ -376,7 +405,7 @@ for(x in 1:n){
   full_formula
   part_formula <- as.formula(pa ~ te(ttemp, pprec, sp, bs=c('tp', 'tp', 're'), by=not_complex))
   
-  ### presence-absence data!
+  ### presence-absence data! ****************************************************
   pa_model_data <- read_csv("data/tabular/hgam_multiple_layers/hgam_pa_data_med_nobias.csv")
   pa_model_data$sp <- as.factor(pa_model_data$sp)
   pa_model_data_gp <- read_csv("data/tabular/hgam_multiple_layers/hgam_pa_data_med_nobias_gp.csv")
@@ -384,7 +413,7 @@ for(x in 1:n){
   pa_model_data_nocp <- read_csv("data/tabular/hgam_multiple_layers/hgam_pa_data_med_nobias_nocp.csv")
   pa_model_data_nocp$sp <- as.factor(pa_model_data_nocp$sp)
   
-  ## unbiased
+  ## unbiased ##################################################################
   mos_modGS <- gam(formula = full_formula, 
                    data = pa_model_data,
                    optimizer=c("outer", "bfgs"),
@@ -406,12 +435,14 @@ for(x in 1:n){
                         family = "binomial", 
                         method = "REML")
   
+  # initializing variables for prediction raster
   pred_pa_modGS <- rast(rep(mad_mask, num_species))
   pred_pa_modGS_gp <- rast(rep(mad_mask, num_species))
   pred_pa_modGS_nocp <- rast(rep(mad_mask, num_species))
   pred_pa_modGS_nogp <- rast(rep(mad_mask, num_species))
   covs$not_complex <- 1
   cor_unbiased[[x]] <- data.frame(E = 0, GS=0, S=0, NoG=0) # everything, group + species data, species data, species-only smooth
+  # looping through all species + predicting
   for(i in 1:num_species){
     covs$sp <- factor(i)
     cp <- species[i, 2]
@@ -443,6 +474,7 @@ for(x in 1:n){
     plot(pred_pa_modGS_nocp[[i]], main = paste("Species", i, "- unbiased No CP"), range=c(0,1))
     plot(pred_pa_modGS_nogp[[i]], main = paste("Species", i, "- unbiased No GP"), range=c(0,1))
     
+    # computing correlation
     cor_unbiased[[x]][i, 1] <- compute_cor(prob_pres_sp[[i]], pred_pa_modGS[[i]])
     cor_unbiased[[x]][i, 2] <- compute_cor(prob_pres_sp[[i]], pred_pa_modGS_gp[[i]])
     cor_unbiased[[x]][i, 3] <- compute_cor(prob_pres_sp[[i]], pred_pa_modGS_nocp[[i]])
@@ -450,7 +482,7 @@ for(x in 1:n){
   }
   
 
-  # biased
+  # biased #####################################################################
   pa_model_data_allbiased <- read_csv("data/tabular/hgam_multiple_layers/hgam_pa_data_med_allbias.csv")
   pa_model_data_allbiased$sp <- as.factor(pa_model_data_allbiased$sp)
   pa_model_data_allbiased_gp <- read_csv("data/tabular/hgam_multiple_layers/hgam_pa_data_med_allbias_gp.csv")
@@ -479,12 +511,15 @@ for(x in 1:n){
                                   family = "binomial", 
                                   method = "REML")
   
+  # initializing variables for prediction raster
   pred_pa_modGS_allbiased <- rast(rep(mad_mask, num_species))
   pred_pa_modGS_allbiased_gp <- rast(rep(mad_mask, num_species))
   pred_pa_modGS_allbiased_nocp <- rast(rep(mad_mask, num_species))
   pred_pa_modGS_allbiased_nogp <- rast(rep(mad_mask, num_species))
   covs$not_complex <- 1
   cor_allbiased[[x]] <- data.frame(E = 0, GS=0, S=0, NoG=0)
+  
+  # looping through all species + predicting
   for(i in 1:num_species){
     covs$sp <- factor(i)
     cp <- species[i, 2]
@@ -516,13 +551,14 @@ for(x in 1:n){
     plot(pred_pa_modGS_allbiased_nocp[[i]], main = paste("Species", i, "- biased No CP"), range=c(0,1))
     plot(pred_pa_modGS_allbiased_nogp[[i]], main = paste("Species", i, "- biased No GP"), range=c(0,1))
     
+    # computing correlations
     cor_allbiased[[x]][i, 1] <- compute_cor(prob_pres_sp[[i]], pred_pa_modGS_allbiased[[i]])
     cor_allbiased[[x]][i, 2] <- compute_cor(prob_pres_sp[[i]], pred_pa_modGS_allbiased_gp[[i]])
     cor_allbiased[[x]][i, 3] <- compute_cor(prob_pres_sp[[i]], pred_pa_modGS_allbiased_nocp[[i]])
     cor_allbiased[[x]][i, 4] <- compute_cor(prob_pres_sp[[i]], pred_pa_modGS_allbiased_nogp[[i]])
   }
   
-  ### presence-only data!
+  ### presence-only data! *******************************************************
   po_model_data <- read_csv("data/tabular/hgam_multiple_layers/presence_only_data_rbg_hgam.csv")
   po_model_data$sp <- as.factor(po_model_data$sp)
   po_model_data_gp <- read_csv("data/tabular/hgam_multiple_layers/hgam_po_data_med_gp.csv")
@@ -530,7 +566,7 @@ for(x in 1:n){
   po_model_data_nocp <- read_csv("data/tabular/hgam_multiple_layers/hgam_po_data_med_nocp.csv")
   po_model_data_nocp$sp <- as.factor(po_model_data_nocp$sp)
   
-  ## unbiased
+  ## unbiased ###################################################################
   mos_modGS_rbg <- gam(formula = full_formula, 
                        data = po_model_data,
                        optimizer=c("outer", "bfgs"),
@@ -552,12 +588,14 @@ for(x in 1:n){
                             family = "binomial", 
                             method = "REML")
   
+  # initializing variables for prediction raster
   pred_po_modGS <- rast(rep(mad_mask, num_species))
   pred_po_modGS_gp <- rast(rep(mad_mask, num_species))
   pred_po_modGS_nocp <- rast(rep(mad_mask, num_species))
   pred_po_modGS_nogp <- rast(rep(mad_mask, num_species))
   covs$not_complex <- 1
   cor_po_unbiased[[x]] <- data.frame(E = 0, GS=0, S=0, NoG=0)
+  # looping through all species + predicting
   for(i in 1:num_species){
     covs$sp <- factor(i)
     cp <- species[i, 2]
@@ -589,13 +627,14 @@ for(x in 1:n){
     plot(pred_po_modGS_nocp[[i]], main = paste("Species", i, "- unbiased No CP"))
     plot(pred_po_modGS_nogp[[i]], main = paste("Species", i, "- unbiased No GP"))
     
+    # computing correlations
     cor_po_unbiased[[x]][i, 1] <- compute_cor(prob_pres_sp[[i]], pred_po_modGS[[i]])
     cor_po_unbiased[[x]][i, 2] <- compute_cor(prob_pres_sp[[i]], pred_po_modGS_gp[[i]])
     cor_po_unbiased[[x]][i, 3] <- compute_cor(prob_pres_sp[[i]], pred_po_modGS_nocp[[i]])
     cor_po_unbiased[[x]][i, 4] <- compute_cor(prob_pres_sp[[i]], pred_po_modGS_nogp[[i]])
   }
   
-  # biased po data
+  # biased po data #############################################################
   po_model_data_allbiased <- read_csv("data/tabular/hgam_multiple_layers/presence_only_data_allbiased_rbg_hgam.csv")
   po_model_data_allbiased$sp <- as.factor(po_model_data_allbiased$sp)
   po_model_data_allbiased_gp <- read_csv("data/tabular/hgam_multiple_layers/hgam_po_data_med_allbias_gp.csv")
@@ -624,12 +663,14 @@ for(x in 1:n){
                                       family = "binomial", 
                                       method = "REML")
   
+  # initializing variables for prediction raster
   pred_po_modGS_allbiased <- rast(rep(mad_mask, num_species))
   pred_po_modGS_allbiased_gp <- rast(rep(mad_mask, num_species))
   pred_po_modGS_allbiased_nocp <- rast(rep(mad_mask, num_species))
   pred_po_modGS_allbiased_nogp <- rast(rep(mad_mask, num_species))
   covs$not_complex <- 1
   cor_po_allbiased[[x]] <- data.frame(E = 0, GS=0, S=0, NoG=0)
+  # looping through all species + predicting
   for(i in 1:num_species){
     covs$sp <- factor(i)
     cp <- species[i, 2]
@@ -661,12 +702,15 @@ for(x in 1:n){
     plot(pred_po_modGS_allbiased_nocp[[i]], main = paste("Species", i, "- biased No CP"))
     plot(pred_po_modGS_allbiased_nogp[[i]], main = paste("Species", i, "- biased No GP"))
     
+    # computing correlations
     cor_po_allbiased[[x]][i, 1] <- compute_cor(prob_pres_sp[[i]], pred_po_modGS_allbiased[[i]])
     cor_po_allbiased[[x]][i, 2] <- compute_cor(prob_pres_sp[[i]], pred_po_modGS_allbiased_gp[[i]])
     cor_po_allbiased[[x]][i, 3] <- compute_cor(prob_pres_sp[[i]], pred_po_modGS_allbiased_nocp[[i]])
     cor_po_allbiased[[x]][i, 4] <- compute_cor(prob_pres_sp[[i]], pred_po_modGS_allbiased_nogp[[i]])
   }
 }
+
+# adjusting data
 cor_unbiased <- bind_rows(cor_unbiased, .id="column_label") %>% select(-column_label) %>%
   rename("All Data, All Smooths"=E, "Group + Species Data, All Smooths"=GS, "Species-Only Data, All Smooths"=S,
          "Species-Only Smooths"=NoG)
@@ -680,6 +724,7 @@ cor_po_allbiased <- bind_rows(cor_po_allbiased, .id="column_label") %>% select(-
   rename("All Data, All Smooths"=E, "Group + Species Data, All Smooths"=GS, "Species-Only Data, All Smooths"=S, 
          "Species-Only Smooths"=NoG)
 
+# saving data
 write.csv(cor_unbiased,
           file = "data/tabular/hgam_multiple_layers/cor_unbiased.csv",
           row.names = FALSE)
@@ -693,11 +738,13 @@ write.csv(cor_po_allbiased,
           file = "data/tabular/hgam_multiple_layers/cor_po_allbiased.csv",
           row.names = FALSE)
 
+# can run from here if already saved
 cor_unbiased <- read_csv("data/tabular/hgam_multiple_layers/cor_unbiased.csv")
 cor_allbiased <- read_csv("data/tabular/hgam_multiple_layers/cor_allbiased.csv")
 cor_po_unbiased <- read_csv("data/tabular/hgam_multiple_layers/cor_po_unbiased.csv")
 cor_po_allbiased <- read_csv("data/tabular/hgam_multiple_layers/cor_po_allbiased.csv")
 
+# compute averages
 cor_unbiased_avg <- cor_unbiased %>%
   colMeans
 cor_unbiased_avg
@@ -734,6 +781,7 @@ max_po_allbiased
 
 library(ggplot2)
 
+# converting them into format for analyzing
 df1 <- make_long(cor_unbiased, "PA Unbiased")
 df2 <- make_long(cor_allbiased, "PA Biased")
 df3 <- make_long(cor_po_unbiased, "PO Unbiased")
@@ -754,6 +802,7 @@ summary_df <- all_data %>%
 
 summary_df$Model <- factor(summary_df$Model, levels=c("All Data, All Smooths", "Group + Species Data, All Smooths", "Species-Only Data, All Smooths", "Species-Only Smooths"))
 
+# creating a heatplot of means of correlations
 ggplot(summary_df, aes(x = Model, y = Type, fill = Mean)) +
   geom_tile(color = "white") +
   geom_text(aes(label = Label), color = "black", size = 4.2, lineheight = 0.9) +
@@ -780,6 +829,7 @@ ggplot(summary_df, aes(x = Model, y = Type, fill = Mean)) +
     plot.title = element_text(hjust = 0.5)
   )
 
+# performance variable for how many times each model does best
 perf <- rbind(
   'PA Unbiased' = max_unbiased,
   'PA Biased' = max_allbiased,
@@ -795,6 +845,7 @@ write.csv(
 
 col_names <- c("All Data, All Smooths", "Group + Species Data, All Smooths", "Species-Only Data, All Smooths", "Species-Only Smooths")
 
+# converting to better format for analyzing
 cor_unbiased_long <- cor_unbiased %>%
   mutate(Row = row_number()) %>%
   pivot_longer(cols = col_names, names_to = "Model", values_to = "Value")
@@ -813,7 +864,7 @@ cor_allbiased_long$Model <- factor(cor_allbiased_long$Model, levels = col_names)
 cor_po_unbiased_long$Model <- factor(cor_po_unbiased_long$Model, levels = col_names)
 cor_po_allbiased_long$Model <- factor(cor_po_allbiased_long$Model, levels = col_names)
 
-
+# can calculate the mean and plot the line on the plot if you want
 model_means_unbiased <- cor_unbiased_long %>%
   group_by(Model) %>%
   summarize(mean_val = mean(Value), .groups = "drop")
@@ -827,9 +878,10 @@ model_means_po_allbiased <- cor_po_allbiased_long %>%
   group_by(Model) %>%
   summarize(mean_val = mean(Value), .groups = "drop")
 
-summary(cor_unbiased)
+# plotting all correlation values
 ggplot(cor_unbiased_long, aes(x = Row, y = Value, color = Model)) +
   geom_point(size = 2) +
+  # add this code if you want to see the mean on the plots as well
   # geom_hline(data=model_means, aes(yintercept=mean_val, color=Model),
   #           linetype="dashed", size=1) +
   scale_color_manual(
@@ -849,6 +901,7 @@ ggplot(cor_unbiased_long, aes(x = Row, y = Value, color = Model)) +
 
 ggplot(cor_allbiased_long, aes(x = Row, y = Value, color = Model)) +
   geom_point(size = 2) +
+  # add this code if you want to see the mean on the plots as well
   # geom_hline(data=model_means, aes(yintercept=mean_val, color=Model),
   #           linetype="dashed", size=1) +
   scale_color_manual(
@@ -868,6 +921,7 @@ ggplot(cor_allbiased_long, aes(x = Row, y = Value, color = Model)) +
 
 ggplot(cor_po_unbiased_long, aes(x = Row, y = Value, color = Model)) +
   geom_point(size = 2) +
+  # add this code if you want to see the mean on the plots as well
   # geom_hline(data=model_means, aes(yintercept=mean_val, color=Model),
   #           linetype="dashed", size=1) +
   scale_color_manual(
@@ -887,6 +941,7 @@ ggplot(cor_po_unbiased_long, aes(x = Row, y = Value, color = Model)) +
 
 ggplot(cor_po_allbiased_long, aes(x = Row, y = Value, color = Model)) +
   geom_point(size = 2) +
+  # add this code if you want to see the mean on the plots as well
   # geom_hline(data=model_means, aes(yintercept=mean_val, color=Model),
   #           linetype="dashed", size=1) +
   scale_color_manual(
@@ -904,6 +959,8 @@ ggplot(cor_po_allbiased_long, aes(x = Row, y = Value, color = Model)) +
     plot.title = element_text(hjust = 0.5)
   )
 
+
+# plotting boxplots for variations of correlations
 ggplot(cor_unbiased_long, aes(x=Model, y=Value, color=Model)) +
   geom_boxplot(fill=NA, size=0.5) +
   scale_color_manual(values = c("All Data, All Smooths" = "black", "Group + Species Data, All Smooths" = "red", 
@@ -966,6 +1023,8 @@ ggplot(cor_po_allbiased_long, aes(x=Model, y=Value, color=Model)) +
 
 colnames(perf) <- c("E", "GS", "S", "NoG")
 
+
+# getting a table of best-performing models
 table_max <- data.frame(perf) %>%
   mutate(type = rownames(.)) %>%
   pivot_longer(cols = c(E, GS, S, NoG), names_to = "Model", values_to = "Max") %>%
@@ -979,7 +1038,7 @@ table_max <- data.frame(perf) %>%
 
 table_max$Model <- factor(table_max$Model, levels = col_names)
 
-
+# plotting stacked bar plot
 ggplot(table_max, aes(x=type,fill=Model)) + 
   geom_bar(stat="identity",position="fill", aes(y=Max)) +
   labs(

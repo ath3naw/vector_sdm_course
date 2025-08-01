@@ -65,7 +65,18 @@ leuco_data$Number <- case_when(
   TRUE ~ 0
   )
 leuco_data$Number <- ifelse(as.numeric(leuco_data$Number)>0, 1, 0)
-
+library(geodata)
+wrld <- world(path=".")
+plot(wrld, xlim=c(-10, 100), ylim=c(-40, 80), col="light yellow", border="light gray")
+points(leuco_data$lonx, leuco_data$laty, col="red", pch=20)
+acv <- vect(leuco_data, geom=c("lonx", "laty"), crs="+proj=longlat +datum=WGS84")
+ovr <- extract(acv, wrld)
+cntr <- ovr$NAME_0
+i <- which(is.na(cntr))
+i
+j <- which(cntr != acv$Country[j])
+plot(acv)
+lines(wrld,col='blue',lwd=2)
 
 #coords <- vect(df_clean, geom=c("lon", "lat"), crs="+proj=longlat +datum=WGS84")
  

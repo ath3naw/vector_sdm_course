@@ -7,6 +7,7 @@ library(dplyr)
 library(mgcv)
 source("R/functions.R")
 
+# read in variables
 prob_pres <- terra::rast("data/grids/spec_prob_pres_hglm.tif")
 covs <- terra::rast("data/grids/covariates.tif")
 mad_mask <- terra::rast("data/grids/mad_mask.tif")
@@ -37,7 +38,7 @@ pa_model_data_med_nobias_16$sp <- as.factor(pa_model_data_med_nobias_16$sp)
 
 
 # Creating the models
-# complex
+# group
 # mos_modGS <- gam(pa ~ s(ttemp) + 
 #                    s(ttemp, sp, bs = "fs", by=not_complex), 
 #                  data = pa_model_data, 
@@ -74,7 +75,7 @@ pa_model_data_med_nobias_16$sp <- as.factor(pa_model_data_med_nobias_16$sp)
 
 
 # Creating the models - unbiased
-# complex
+# group
 mos_modGS_med_nobias_56 <- gam(pa ~ te(ttemp, pprec, bs=c("tp", "tp")) + 
                    t2(ttemp, pprec, sp, bs=c("tp", "tp", "re"),
                       by=not_complex), 
@@ -103,9 +104,10 @@ mos_modGS_med_nobias_16 <- gam(pa ~ te(ttemp, pprec, bs=c("tp", "tp")) +
                                family = "binomial", 
                                method = "REML")
 
+# group
 covs$not_complex <- 0
 covs$sp <- "x"
-# specify the species
+# predict based on models
 pred_pa_modGS_group_med_nobias_56 <- sdm_predict(
   model = mos_modGS_med_nobias_56,
   covariates = covs
@@ -125,12 +127,14 @@ pred_pa_modGS_group_med_nobias_16 <- sdm_predict(
 
 
 par(mfrow=c(2,3))
+# plot real vs predicted models
 plot(group_prob_pres, main=paste("Group Prob of Pres -", n_samples, "points"), range=c(0,1))
 plot(pred_pa_modGS_group_med_nobias_56, main="5/6 Complex Pred_Group_Dist", range=c(0,1))
 plot(pred_pa_modGS_group_med_nobias_23, main="2/3 Complex Pred_Group_Dist", range=c(0,1))
 plot(pred_pa_modGS_group_med_nobias_13, main="1/3 Complex Pred_Group_Dist", range=c(0,1))
 plot(pred_pa_modGS_group_med_nobias_16, main="1/6 Complex Pred_Group_Dist", range=c(0,1))
 
+# species
 covs$not_complex <- 1
 pred_pa_modGS_med_nobias_56 <- rast(rep(mad_mask, n_sp))
 pred_pa_modGS_med_nobias_23 <- rast(rep(mad_mask, n_sp))
@@ -158,6 +162,7 @@ for(letter in letters[1:n_sp]){
     covariates = covs
   )
   par(mfrow=c(2,3))
+  # plot real vs predicted models
   plot(prob_pres[[i]], main = paste("True Prob of Pres -", n_samples, "points"), range=c(0,1))
   plot(pred_pa_modGS_med_nobias_56[[i]], main = paste("5/6 Complex - Species", letter), range=c(0,1))
   plot(pred_pa_modGS_med_nobias_23[[i]], main = paste("2/3 Complex - Species", letter), range=c(0,1))
@@ -167,7 +172,7 @@ for(letter in letters[1:n_sp]){
 
 
 par(mfrow=c(2,2))
-
+# plot partial response plots for varying data quality
 partial_response_plot(
   model = mos_modGS_med_nobias_56,
   data = pa_model_data_med_nobias_56,

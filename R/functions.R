@@ -232,6 +232,7 @@ probability_ofal_response <- function (model, data, var, type = c("response", "l
   x
 }
 
+# function to calculate spacing of x-coords + y-values for partial response plot
 partial_response <- function (model, data, var, type = c("response", "link"), rng = NULL, nsteps = 25) {
   
   type <- match.arg(type)
@@ -267,7 +268,7 @@ partial_response <- function (model, data, var, type = c("response", "link"), rn
   x
 }
 
-# plot partial response curve
+# function to plot partial response curve
 partial_response_plot <- function(
   model,
   data,
@@ -286,6 +287,8 @@ partial_response_plot <- function(
   )
 }
 
+# function to plot partial response plot for group probability of presence
+# uses "true" formula to calculate true partial response
 partial_group <- function(var, means, bounds, cons, minmax, max_average_catch_size=5000, length_out = 25){
   var_name <- var
   i <- which(bounds$variable == var_name)
@@ -335,6 +338,8 @@ partial_group <- function(var, means, bounds, cons, minmax, max_average_catch_si
   )
 }
 
+# function to plot partial response plot for species probability of presence
+# uses "true" formula to calculate true partial response
 partial_spec <- function(var, means, bounds, cons, minmax, max_average_catch_size=5000, length_out = 25, sp){
   var_name <- var
   i <- which(bounds$variable == var_name)
@@ -384,6 +389,7 @@ partial_spec <- function(var, means, bounds, cons, minmax, max_average_catch_siz
   )
 }
 
+# function to generate simulated data + convert to data frame
 generate_data_tabular <- function(n_samples, bias, prob_pres, n_sp = 10, weighted = FALSE){
   sample_locations <- random_locations(bias,
                                       n_samples,
@@ -423,6 +429,7 @@ generate_data_tabular <- function(n_samples, bias, prob_pres, n_sp = 10, weighte
   pa_tab
 }
 
+# function to convert previous tabular data into format used by model
 generate_model_data <- function(n_samples, n_cp, pa_tab, n_sp=10){
   pa_tab_1 <- pa_tab[1:n_cp,] |>
     dplyr::select(site_id, x, y, complex) |>
@@ -444,6 +451,7 @@ generate_model_data <- function(n_samples, n_cp, pa_tab, n_sp=10){
   pa_model_data
 }
 
+# computes one type of metric for calculating mse between 2 rasters
 compute_mse <- function(true_prob, pred_prob){
   resid <- (pred_prob-true_prob)^2
   as.numeric(global(resid, fun="mean", na.rm=TRUE))
@@ -465,6 +473,8 @@ compute_mse <- function(true_prob, pred_prob){
 #   as.numeric(global(resid, fun="mean", na.rm=TRUE))
 # }
 
+# computes one type of metric to take the inverse of the probit function
+# for probability of presence - "unravels" prob pres into true relative abundance
 inverse_probit <- function(true_prob, pred_prob){
   clip_range <- function(x){
     pmin(pmax(x, 1e-10), 1-1e-10)
@@ -475,11 +485,13 @@ inverse_probit <- function(true_prob, pred_prob){
   as.numeric(global(resid, fun="mean", na.rm=TRUE))
 }
 
+# compute pearson correlation for pa data
 compute_cor <- function(true_prob, pred_prob){
   corr <- layerCor(c(true_prob, pred_prob), "pearson", na.rm=TRUE)$correlation
   corr[1,2]
 }
 
+# compute spearman correlation for po data
 compute_cor_po <- function(true_prob, pred_prob){
   v1 <- values(true_prob)
   v2 <- values(pred_prob)
@@ -487,6 +499,7 @@ compute_cor_po <- function(true_prob, pred_prob){
   corr[1,1]
 }
 
+# convert metrics into data frame to plot statistics/graphs
 make_long <- function(df, type) {
   df %>%
     pivot_longer(cols = everything(), names_to = "Model", values_to = "Correlation") %>%

@@ -7,10 +7,12 @@ library(dplyr)
 source("R/functions.R")
 set.seed(126)
 par(mfrow = c(1,1))
+# read in variables
 covs <- terra::rast("data/grids/covariates.tif")
 mad_mask <- terra::rast("data/grids/mad_mask.tif")
 bc_mad <- terra::rast("data/grids/bc_mad.tif")
 
+# defining number of species + maximum catch size
 n_sp <- 10
 max_catch_size <- 10  # was 10
 
@@ -46,6 +48,7 @@ species_data <- data.frame(
   int = rnorm(n_sp, 0, 0.1) # was 0.02
 )
 
+# calculating group abundance from values
 group_abund <- exp(beta_group["int"]+beta_group["ttemp"]*covs$ttemp+beta_group["ttemp2"]*(covs$ttemp-cons_group["ttemp"])^2+
                      #beta_group["tiso"]*covs$tiso+
                      #beta_group["tseas"]*covs$tseas+
@@ -57,6 +60,7 @@ plot(group_abund)
 rel_group_abund <- rescale_abundance(group_abund)
 names(rel_group_abund) <- "relative_abundance"
 plot(rel_group_abund, main="Relative Abundance")
+# calculating probability of presence from that
 group_prob_pres <- probability_of_presence(rel_group_abund,
                                            max_catch_size)
 plot(group_prob_pres, main="Prob of Presence")
@@ -64,6 +68,7 @@ writeRaster(group_prob_pres,
             "data/grids/group_prob_pres_hglm.tif",
             overwrite = TRUE)
 
+# calculating species abundance
 species_abund <- exp(beta_group["int"]+species_data$int+(beta_group["ttemp"]+species_data$ttemp)*covs$ttemp+
                        (beta_group["ttemp2"]+species_data$ttemp2)*(covs$ttemp-cons_group["ttemp"])^2+
                        #(beta_group["tiso"]+species_data$tiso)*covs$tiso+
@@ -77,6 +82,7 @@ plot(species_abund)
 rel_species_abund <- rast(lapply(species_abund, rescale_abundance))
 
 plot(rel_species_abund, main="Relative Abundance")
+# getting it into probability of presence again
 prob_pres <- probability_of_presence(rel_species_abund,
                                      max_catch_size)
 plot(prob_pres, main="Prob of Presence")
@@ -84,6 +90,7 @@ writeRaster(prob_pres,
             "data/grids/spec_prob_pres_hglm.tif",
             overwrite = TRUE)
 
+# calculating bounds of covariates for partial response plots
 covs_bounds <- data.frame(
   variable = names(covs),
   min = covs_bounds <- data.frame(
@@ -97,6 +104,7 @@ covs_means <- global(covs, "mean", na.rm=TRUE)[, 1]
 covs_means <- as.data.frame(t(covs_means))
 names(covs_means) <- names(covs)
 
+# getting min and max of abundances for true scaling
 min_value_group <- global(group_abund, "min", na.rm = TRUE)[1, 1]
 max_value_group <- global(group_abund, "max", na.rm = TRUE)[1, 1]
 min_value <- global(species_abund, "min", na.rm = TRUE)[, 1]

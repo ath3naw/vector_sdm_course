@@ -25,7 +25,7 @@ writeRaster(sp_bias,
 all_bias <- bias*sp_bias
 
 ## Now for simulation of the data
-### Medium data, no bias
+### Medium data, no bias ********************************************************************
 n_samples <- 149
 num_species <- nlyr(prob_pres_sp)
 
@@ -51,7 +51,7 @@ write.csv(pa_model_data,
           file = "data/tabular/hgam_multiple_layers/hgam_pa_data_med_nobias.csv",
           row.names = FALSE)
 
-### with bias, travel time
+### with bias, travel time ######################################################
 pa_tab <- generate_data_tabular(n_samples, bias, prob_pres=prob_pres_sp, n_sp=n_sp, weighted=TRUE)
 write.csv(pa_tab,
           file = "data/tabular/hgam_multiple_layers/hgam_pa_tab_data_med_biased.csv",
@@ -60,14 +60,13 @@ write.csv(pa_tab,
 plot(bias, main="Biased Sample Locations")
 points(pa_tab$x, pa_tab$y, pch = 16)
 
-# number of complex data points
 pa_model_data <- generate_model_data(n_samples, n_group, n_complex, n_cp, n_sp, pa_tab)
 
 write.csv(pa_model_data,
           file = "data/tabular/hgam_multiple_layers/hgam_pa_data_med_bias.csv",
           row.names = FALSE)
 
-### with bias, species
+### with bias, species ##########################################################
 pa_tab <- generate_data_tabular(n_samples, sp_bias, prob_pres=prob_pres_sp, n_sp=n_sp, weighted=TRUE)
 write.csv(pa_tab,
           file = "data/tabular/hgam_multiple_layers/hgam_pa_tab_data_med_spbiased.csv",
@@ -76,14 +75,13 @@ write.csv(pa_tab,
 plot(sp_bias, main="Biased Sample Locations")
 points(pa_tab$x, pa_tab$y, pch = 16)
 
-# number of complex data points
 pa_model_data <- generate_model_data(n_samples, n_group, n_complex, n_cp, n_sp, pa_tab)
 
 write.csv(pa_model_data,
           file = "data/tabular/hgam_multiple_layers/hgam_pa_data_med_spbias.csv",
           row.names = FALSE)
 
-### with bias, all bias
+### with bias, all bias #########################################################
 pa_tab <- generate_data_tabular(n_samples, all_bias, prob_pres=prob_pres_sp, n_sp=n_sp, weighted=TRUE)
 write.csv(pa_tab,
           file = "data/tabular/hgam_multiple_layers/hgam_pa_tab_data_med_allbiased.csv",
@@ -92,14 +90,13 @@ write.csv(pa_tab,
 plot(all_bias, main="Biased Sample Locations")
 points(pa_tab$x, pa_tab$y, pch = 16)
 
-# number of complex data points
 pa_model_data <- generate_model_data(n_samples, n_group, n_complex, n_cp, n_sp, pa_tab)
 
 write.csv(pa_model_data,
           file = "data/tabular/hgam_multiple_layers/hgam_pa_data_med_allbias.csv",
           row.names = FALSE)
 
-# use only species-data, no complex data
+# use only species-data, no complex data $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 # unbiased
 pa_model_data <- read_csv("data/tabular/hgam_multiple_layers/hgam_pa_data_med_nobias.csv")
 pa_model_data <- pa_model_data[!pa_model_data$sp %in% c("group", "complex1", "complex2"),]
@@ -109,7 +106,7 @@ write.csv(
   row.names = FALSE
 )
 
-# use only species-data, no complex data
+# use only species-data, no complex data $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 # biased
 pa_model_data <- read_csv("data/tabular/hgam_multiple_layers/hgam_pa_data_med_allbias.csv")
 pa_model_data <- pa_model_data[!pa_model_data$sp %in% c("group", "complex1", "complex2"),]
@@ -119,8 +116,8 @@ write.csv(
   row.names = FALSE
 )
 
-### presence-only data
-## unbiased data
+### presence-only data **********************************************************************
+## unbiased data ###############################################################
 par(mfrow=c(1,1))
 pa_model_data <- read_csv("data/tabular/hgam_multiple_layers/hgam_pa_data_med_nobias.csv")
 plot(prob_pres_sp[[1]], range=c(0,1))
@@ -135,10 +132,13 @@ write.csv(
   row.names = FALSE
 )
 
+# define number of points
 n_bg_points <- 200
 num_groups <- 15
 random_bg <- random_locations(mad_mask,
                               n_bg_points)
+
+# adjust data frames
 site_id <- seq(from=max(occurrence_coords$site_id)+1, length.out=nrow(random_bg))
 plot(mad_mask)
 points(random_bg)
@@ -165,15 +165,19 @@ for(i in 1:n_cp){
 
 covs_vals <- extract(x=covs, y=crds(random_bg)) |> select(-any_of(c("not_complex", "sp", "complex1", "complex2")))
 covs_vals <- bind_rows(replicate(num_groups, covs_vals, simplify=FALSE))
+
+# create the po_model_data for model
 po_model_data <- rbind(occurrence_coords, bind_cols(po_tab, covs_vals)) |>
   mutate(sp = as.factor(sp))
 
+# save it
 write.csv(
   x = po_model_data,
   file = "data/tabular/hgam_multiple_layers/presence_only_data_rbg_hgam.csv",
   row.names = FALSE
 )
 
+# plotting it to make sure it makes sense
 plot(prob_pres_sp[[1]])
 i <- pa_model_data$sp==1
 points(pa_model_data[i, c("x", "y")], pch=21, bg=pa_model_data$pa[i]==1)
@@ -254,7 +258,7 @@ points(po_model_data[i, c("x", "y")], pch=21, bg=po_model_data$pa[i]==1)
 pa_model_data <- read_csv("data/tabular/hgam_multiple_layers/hgam_pa_data_med_allbias.csv")
 occurrence_coords <- pa_model_data[pa_model_data$pa==1,]
 
-# presence_only
+# presence_only *****************************************************************
 write.csv(
   x = occurrence_coords,
   file = "data/tabular/hgam_multiple_layers/presence_only_data_allbiased_hgam.csv",
@@ -281,8 +285,8 @@ plot(prob_pres[[1]])
 i <- po_model_data$sp=="1"
 points(po_model_data[i, c("x", "y")], pch=21, bg=po_model_data$pa[i]==1)
 
-# use only species-data, no complex data
-# unbiased po
+# use only species-data, no complex data $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+# unbiased po ###################################################################
 po_model_data <- read_csv("data/tabular/hgam_multiple_layers/presence_only_data_rbg_hgam.csv")
 po_model_data <- po_model_data[!po_model_data$sp %in% c("group", "complex1", "complex2"),]
 write.csv(
@@ -290,7 +294,7 @@ write.csv(
   file = "data/tabular/hgam_multiple_layers/hgam_po_data_med_nocp.csv",
   row.names = FALSE
 )
-# biased po
+# biased po #####################################################################
 po_model_data <- read_csv("data/tabular/hgam_multiple_layers/presence_only_data_allbiased_rbg_hgam.csv")
 po_model_data <- po_model_data[!po_model_data$sp %in% c("group", "complex1", "complex2"),]
 write.csv(

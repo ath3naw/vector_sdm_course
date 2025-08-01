@@ -6,18 +6,22 @@ library(gratia)
 library(dplyr)
 source("R/hgam_multiple_layers/functions_multiple.R")
 
+# load in variables and reset format
 par(mfrow = c(1,1))
 covs <- terra::rast("data/grids/covariates.tif")
 twn_mask <- terra::rast("data/grids/mad_mask.tif")
 bc_twn <- terra::rast("data/grids/bc_mad.tif")
 
+# defining number of complex + species
 n_cp <- 2
+# 5 in 1st complex and 7 in 2nd
 n_sp <- c(5,7)
 n_sp <- data.frame(n_sp)
 write.csv(n_sp,
           file = "data/tabular/hgam_multiple_layers/n_sp",
           row.names = FALSE)
 
+# define max_catch_size of mosquitoes
 max_catch_size <- 20
 
 # group level model
@@ -87,6 +91,8 @@ plot(group_abund)
 rel_group_abund <- rescale_abundance(group_abund)
 names(rel_group_abund) <- "relative_abundance"
 plot(rel_group_abund, main="Relative Abundance")
+
+# calculating the group probability of presence
 group_prob_pres <- probability_of_presence(rel_group_abund,
                                            max_catch_size)
 plot(group_prob_pres, main="Prob of Presence")
@@ -94,6 +100,7 @@ writeRaster(group_prob_pres,
             "data/grids/hgam_multiple_layers/group_prob_pres_hgam.tif",
             overwrite = TRUE)
 
+# complex distributions
 complex_abund <- exp(beta_group["int"]+complex_data$int+
                        (beta_group["ttemp"]+complex_data$ttemp)*covs$ttemp+
                        (beta_group["ttemp2"]+complex_data$ttemp2)*(covs$ttemp-cons_group["ttemp"])^2+
@@ -115,9 +122,11 @@ writeRaster(prob_pres_cp,
             "data/grids/hgam_multiple_layers/complex_prob_pres_hgam.tif",
             overwrite = TRUE)
 
+# adding a table for which complex corresponds to the species
 complex_match <- match(species_data$complex, complex_data$complex)
 cpx <- complex_data[complex_match,]
 
+# adding species probability of presence + abundance
 species_abund <- exp(beta_group["int"]+cpx$int+species_data$int+
                        (beta_group["ttemp"]+cpx$ttemp+species_data$ttemp)*covs$ttemp+
                        (beta_group["ttemp2"]+cpx$ttemp2+species_data$ttemp2)*(covs$ttemp-cons_group["ttemp"])^2+
@@ -140,7 +149,7 @@ writeRaster(prob_pres,
             "data/grids/hgam_multiple_layers/spec_prob_pres_hgam.tif",
             overwrite = TRUE)
 
-
+# calculating covariate bounds and means for partial response plots
 covs_bounds <- data.frame(
   variable = names(covs),
   min = covs_bounds <- data.frame(
@@ -154,6 +163,7 @@ covs_means <- global(covs, "mean", na.rm=TRUE)[, 1]
 covs_means <- as.data.frame(t(covs_means))
 names(covs_means) <- names(covs)
 
+# calculating and min and max for group, complex, and species data -> overall min and max for scaling
 min_value_group <- global(group_abund, "min", na.rm = TRUE)[1, 1]
 max_value_group <- global(group_abund, "max", na.rm = TRUE)[1, 1]
 min_value_cp <- global(complex_abund, "min", na.rm = TRUE)[, 1]

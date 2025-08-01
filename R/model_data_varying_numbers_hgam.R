@@ -7,6 +7,7 @@ library(dplyr)
 library(mgcv)
 source("R/functions.R")
 
+# read in variables
 prob_pres <- terra::rast("data/grids/spec_prob_pres_hglm.tif")
 covs <- terra::rast("data/grids/covariates.tif")
 mad_mask <- terra::rast("data/grids/mad_mask.tif")
@@ -39,6 +40,7 @@ pa_model_data_max_nobias_13 <- read_csv("data/tabular/hglm_pa_data_max_nobias_13
 pa_model_data_max_nobias_13$sp <- as.factor(pa_model_data_max_nobias_13$sp)
 
 
+# min = 100 data points, med = 300 data points, max = 900 data points, all 2/3 complex
 mos_modGS_min_nobias_23 <- gam(pa ~ te(ttemp, pprec, bs=c("tp", "tp")) + 
                                  t2(ttemp, pprec, sp, bs=c("tp", "tp", "re"),
                                     by=not_complex), 
@@ -58,9 +60,10 @@ mos_modGS_max_nobias_23 <- gam(pa ~ te(ttemp, pprec, bs=c("tp", "tp")) +
                                family = "binomial", 
                                method = "REML")
 
+# group
 covs$not_complex <- 0
 covs$sp <- "x"
-# specify the species
+# predict based on models
 pred_pa_modGS_group_min_nobias_23 <- sdm_predict(
   model = mos_modGS_min_nobias_23,
   covariates = covs
@@ -75,11 +78,13 @@ pred_pa_modGS_group_max_nobias_23 <- sdm_predict(
 )
 
 par(mfrow=c(2,2))
+# plot real vs predicted models
 plot(group_prob_pres, main=paste("Group Prob of Pres"), range=c(0,1))
 plot(pred_pa_modGS_group_min_nobias_23, main=paste("2/3 Complex Pred_Group_Dist -", n_samples_min, "points"), range=c(0,1))
 plot(pred_pa_modGS_group_med_nobias_23, main=paste("2/3 Complex Pred_Group_Dist -", n_samples_med, "points"), range=c(0,1))
 plot(pred_pa_modGS_group_max_nobias_23, main=paste("2/3 Complex Pred_Group_Dist -", n_samples_max, "points"), range=c(0,1))
 
+# species
 covs$not_complex <- 1
 pred_pa_modGS_min_nobias_23 <- rast(rep(mad_mask, n_sp))
 pred_pa_modGS_med_nobias_23 <- rast(rep(mad_mask, n_sp))
@@ -103,6 +108,7 @@ for(letter in letters[1:n_sp]){
   )
 
   par(mfrow=c(2,2))
+  # plot real vs predicted models
   plot(prob_pres[[i]], main = paste("True Prob of Pres - Species", letter), range=c(0,1))
   plot(pred_pa_modGS_min_nobias_23[[i]], main = paste("2/3 Complex -", n_samples_min, "points"), range=c(0,1))
   plot(pred_pa_modGS_med_nobias_23[[i]], main = paste("2/3 Complex -", n_samples_med, "points"), range=c(0,1))
@@ -111,7 +117,7 @@ for(letter in letters[1:n_sp]){
 
 
 par(mfrow=c(2,2))
-
+# plot partial response plots
 partial_response_plot(
   model = mos_modGS_min_nobias_23,
   data = pa_model_data_min_nobias_23,
@@ -163,7 +169,7 @@ round(k.check(mos_modGS_max_nobias_23),2)
 
 
 
-
+# min = 100 data points, med = 300 data points, max = 900 data points, all 1/3 complex
 mos_modGS_min_nobias_13 <- gam(pa ~ te(ttemp, pprec, bs=c("tp", "tp")) + 
                                  t2(ttemp, pprec, sp, bs=c("tp", "tp", "re"),
                                     by=not_complex), 
@@ -183,9 +189,10 @@ mos_modGS_max_nobias_13 <- gam(pa ~ te(ttemp, pprec, bs=c("tp", "tp")) +
                                family = "binomial", 
                                method = "REML")
 
+# group
 covs$not_complex <- 0
 covs$sp <- "x"
-# specify the species
+# predict based on models
 pred_pa_modGS_group_min_nobias_13 <- sdm_predict(
   model = mos_modGS_min_nobias_13,
   covariates = covs
@@ -200,11 +207,13 @@ pred_pa_modGS_group_max_nobias_13 <- sdm_predict(
 )
 
 par(mfrow=c(2,2))
+# plot real vs predicted models
 plot(group_prob_pres, main=paste("Group Prob of Pres"), range=c(0,1))
 plot(pred_pa_modGS_group_min_nobias_13, main=paste("1/3 Complex Pred_Group_Dist -", n_samples_min, "points"), range=c(0,1))
 plot(pred_pa_modGS_group_med_nobias_13, main=paste("1/3 Complex Pred_Group_Dist -", n_samples_med, "points"), range=c(0,1))
 plot(pred_pa_modGS_group_max_nobias_13, main=paste("1/3 Complex Pred_Group_Dist -", n_samples_max, "points"), range=c(0,1))
 
+# group
 covs$not_complex <- 1
 pred_pa_modGS_min_nobias_13 <- rast(rep(mad_mask, n_sp))
 pred_pa_modGS_med_nobias_13 <- rast(rep(mad_mask, n_sp))
@@ -228,6 +237,7 @@ for(letter in letters[1:n_sp]){
   )
   
   par(mfrow=c(2,2))
+  # plot real vs predicted models
   plot(prob_pres[[i]], main = paste("True Prob of Pres - Species", letter), range=c(0,1))
   plot(pred_pa_modGS_min_nobias_13[[i]], main = paste("1/3 Complex -", n_samples_min, "points"), range=c(0,1))
   plot(pred_pa_modGS_med_nobias_13[[i]], main = paste("1/3 Complex -", n_samples_med, "points"), range=c(0,1))
@@ -236,7 +246,7 @@ for(letter in letters[1:n_sp]){
 
 
 par(mfrow=c(2,2))
-
+# plot partial response plots
 partial_response_plot(
   model = mos_modGS_min_nobias_13,
   data = pa_model_data_min_nobias_13,
@@ -287,6 +297,7 @@ round(k.check(mos_modGS_med_nobias_13),2)
 round(k.check(mos_modGS_max_nobias_13),2)
 
 par(mfrow=c(3,3))
+# plot real vs predicted models, group
 plot(group_prob_pres, main=paste("Group Prob of Pres"), range=c(0,1))
 plot(pred_pa_modGS_group_min_nobias_23, main=paste("2/3 Complex Pred_Group_Dist -", n_samples_min, "points"), range=c(0,1))
 plot(pred_pa_modGS_group_med_nobias_23, main=paste("2/3 Complex Pred_Group_Dist -", n_samples_med, "points"), range=c(0,1))
@@ -295,11 +306,13 @@ plot(pred_pa_modGS_group_min_nobias_13, main=paste("1/3 Complex Pred_Group_Dist 
 plot(pred_pa_modGS_group_med_nobias_13, main=paste("1/3 Complex Pred_Group_Dist -", n_samples_med, "points"), range=c(0,1))
 plot(pred_pa_modGS_group_max_nobias_13, main=paste("1/3 Complex Pred_Group_Dist -", n_samples_max, "points"), range=c(0,1))
 
+# species
 for(letter in letters[1:n_sp]){
   covs$sp <- letter
   i <- match(letter, letters)
   
   par(mfrow=c(3,3))
+  # plot real vs predicted models, comparing min, med, and max amount of data for 2/3 and 1/3 complexes
   plot(prob_pres[[i]], main = paste("True Prob of Pres - Species", letter), range=c(0,1))
   plot(pred_pa_modGS_min_nobias_23[[i]], main = paste("2/3 Complex -", n_samples_min, "points"), range=c(0,1))
   plot(pred_pa_modGS_med_nobias_23[[i]], main = paste("2/3 Complex -", n_samples_med, "points"), range=c(0,1))
