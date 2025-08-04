@@ -1,3 +1,17 @@
+rm(list=ls())
+library(tidyverse)
+library(terra)
+library(geodata)
+library(gratia)
+library(dplyr)
+library(mgcv)
+library(sp)
+source("R/leucosphyrus_model/leuco_functions.R")
+# part 4
+pa_model_data <- read_csv("data/tabular/hgam_leuco_data_nobias.csv")
+covs <- terra::rast("data/grids/covs_hgam.tif")
+leuco_map_mask <- terra::rast("data/grids/leuco_map_mask.tif")
+cp <- c("leucosphyrus", "dirus")
 
 full_formula <- "pa ~ te(ttemp, pprec, bs=c('tp', 'tp')) + 
                       te(ttemp, pprec, bs=c('tp', 'tp'), by=leucosphyrus) +
@@ -6,7 +20,8 @@ full_formula <- "pa ~ te(ttemp, pprec, bs=c('tp', 'tp')) +
                       by=not_complex)"
 full_formula <- as.formula(full_formula)
 full_formula
-
+pa_model_data$sp <- factor(pa_model_data$sp)
+  
 mos_modGS <- gam(formula=full_formula, 
                  data = pa_model_data, 
                  optimizer=c("outer", "bfgs"),

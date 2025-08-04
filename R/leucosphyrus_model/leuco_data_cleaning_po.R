@@ -1,3 +1,4 @@
+rm(list=ls())
 library(malariaAtlas)
 library(stringr)
 library(tidyr)
@@ -5,6 +6,7 @@ library(tidyverse)
 library(gratia)
 library(dplyr)
 
+# part 2 if you want to include po coords
 # read in data
 asia_vec_data <- getVecOcc(continent = "Asia")
 unique(asia_vec_data$species_plain)
