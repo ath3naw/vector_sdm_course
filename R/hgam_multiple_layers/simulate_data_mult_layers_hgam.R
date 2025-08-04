@@ -190,70 +190,6 @@ plot(prob_pres_sp[[3]])
 i <- po_model_data$sp==3
 points(po_model_data[i, c("x", "y")], pch=21, bg=po_model_data$pa[i]==1)
 
-
-
-# ## random background but travel-biased data
-# pa_model_data <- read_csv("data/tabular/hgam_multiple_layers/hgam_pa_data_med_bias_23.csv")
-# occurrence_coords <- pa_model_data[pa_model_data$pa==1,]
-# 
-# # presence_only
-# write.csv(
-#   x = occurrence_coords,
-#   file = "data/tabular/hgam_multiple_layers/presence_only_data_biased_hgam.csv",
-#   row.names = FALSE
-# )
-# 
-# po_model_data <- rbind(occurrence_coords, bind_cols(po_tab, covs_vals)) |>
-#   mutate(sp = as.factor(sp))
-# 
-# write.csv(
-#   x = po_model_data,
-#   file = "data/tabular/hgam_multiple_layers/presence_only_data_biased_rbg_hgam.csv",
-#   row.names = FALSE
-# )
-# 
-# plot(prob_pres[[1]])
-# i <- pa_model_data$sp=="1"
-# points(pa_model_data[i, c("x", "y")], pch=21, bg=pa_model_data$pa[i]==1)
-# 
-# plot(bias)
-# points(pa_model_data[i, c("x", "y")], pch=16)
-# 
-# plot(prob_pres[[1]])
-# i <- po_model_data$sp=="1"
-# points(po_model_data[i, c("x", "y")], pch=21, bg=po_model_data$pa[i]==1)
-# 
-# # random background but species-biased data
-# pa_model_data <- read_csv("data/tabular/hgam_multiple_layers/hgam_pa_data_med_spbias_23.csv")
-# occurrence_coords <- pa_model_data[pa_model_data$pa==1,]
-# 
-# # presence_only
-# write.csv(
-#   x = occurrence_coords,
-#   file = "data/tabular/hgam_multiple_layers/presence_only_data_spbiased_hgam.csv",
-#   row.names = FALSE
-# )
-# 
-# po_model_data <- rbind(occurrence_coords, bind_cols(po_tab, covs_vals)) |>
-#   mutate(sp = as.factor(sp))
-# 
-# write.csv(
-#   x = po_model_data,
-#   file = "data/tabular/hgam_multiple_layers/presence_only_data_spbiased_rbg_hgam.csv",
-#   row.names = FALSE
-# )
-# 
-# plot(prob_pres[[1]])
-# i <- pa_model_data$sp=="1"
-# points(pa_model_data[i, c("x", "y")], pch=21, bg=pa_model_data$pa[i]==1)
-# 
-# plot(sp_bias)
-# points(pa_model_data[i, c("x", "y")], pch=16)
-# 
-# plot(prob_pres[[1]])
-# i <- po_model_data$sp=="1"
-# points(po_model_data[i, c("x", "y")], pch=21, bg=po_model_data$pa[i]==1)
-
 ## random background but biased data
 pa_model_data <- read_csv("data/tabular/hgam_multiple_layers/hgam_pa_data_med_allbias.csv")
 occurrence_coords <- pa_model_data[pa_model_data$pa==1,]
@@ -285,6 +221,69 @@ plot(prob_pres[[1]])
 i <- po_model_data$sp=="1"
 points(po_model_data[i, c("x", "y")], pch=21, bg=po_model_data$pa[i]==1)
 
+# if you want other types of bias in simulations
+# ## random background but travel-biased data ###################################
+# pa_model_data <- read_csv("data/tabular/hgam_multiple_layers/hgam_pa_data_med_bias_23.csv")
+# occurrence_coords <- pa_model_data[pa_model_data$pa==1,]
+# 
+# # presence_only
+# write.csv(
+#   x = occurrence_coords,
+#   file = "data/tabular/hgam_multiple_layers/presence_only_data_biased_hgam.csv",
+#   row.names = FALSE
+# )
+# 
+# po_model_data <- rbind(occurrence_coords, bind_cols(po_tab, covs_vals)) |>
+#   mutate(sp = as.factor(sp))
+# 
+# write.csv(
+#   x = po_model_data,
+#   file = "data/tabular/hgam_multiple_layers/presence_only_data_biased_rbg_hgam.csv",
+#   row.names = FALSE
+# )
+# 
+# plot(prob_pres[[1]])
+# i <- pa_model_data$sp=="1"
+# points(pa_model_data[i, c("x", "y")], pch=21, bg=pa_model_data$pa[i]==1)
+# 
+# plot(bias)
+# points(pa_model_data[i, c("x", "y")], pch=16)
+# 
+# plot(prob_pres[[1]])
+# i <- po_model_data$sp=="1"
+# points(po_model_data[i, c("x", "y")], pch=21, bg=po_model_data$pa[i]==1)
+# 
+# # random background but species-biased data ###################################
+# pa_model_data <- read_csv("data/tabular/hgam_multiple_layers/hgam_pa_data_med_spbias_23.csv")
+# occurrence_coords <- pa_model_data[pa_model_data$pa==1,]
+# 
+# # presence_only
+# write.csv(
+#   x = occurrence_coords,
+#   file = "data/tabular/hgam_multiple_layers/presence_only_data_spbiased_hgam.csv",
+#   row.names = FALSE
+# )
+# 
+# po_model_data <- rbind(occurrence_coords, bind_cols(po_tab, covs_vals)) |>
+#   mutate(sp = as.factor(sp))
+# 
+# write.csv(
+#   x = po_model_data,
+#   file = "data/tabular/hgam_multiple_layers/presence_only_data_spbiased_rbg_hgam.csv",
+#   row.names = FALSE
+# )
+# 
+# plot(prob_pres[[1]])
+# i <- pa_model_data$sp=="1"
+# points(pa_model_data[i, c("x", "y")], pch=21, bg=pa_model_data$pa[i]==1)
+# 
+# plot(sp_bias)
+# points(pa_model_data[i, c("x", "y")], pch=16)
+# 
+# plot(prob_pres[[1]])
+# i <- po_model_data$sp=="1"
+# points(po_model_data[i, c("x", "y")], pch=21, bg=po_model_data$pa[i]==1)
+
 # use only species-data, no complex data $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 # unbiased po ###################################################################
 po_model_data <- read_csv("data/tabular/hgam_multiple_layers/presence_only_data_rbg_hgam.csv")
@@ -303,11 +302,13 @@ write.csv(
   row.names = FALSE
 )
 
-
+# if you want to test out biased background with biased data
 # # biased background and biased data
 # # generating biased background points, travel-biased
 # pa_model_data <- read_csv("data/tabular/hglm_pa_data_med_bias_23.csv")
 # occurrence_coords <- pa_model_data[pa_model_data$pa==1,]
+#
+# # set number of background points as 200 for now
 # n_bg_points <- 200
 # biased_bg <- random_locations(bias,
 #                               (n_sp+1)*n_bg_points)

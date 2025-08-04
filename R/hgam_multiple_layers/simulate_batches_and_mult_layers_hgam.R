@@ -26,7 +26,7 @@ write.csv(n_sp,
 max_catch_size <- 20
 
 # group level model
-#ttemp was 0.02, ttemp2=-0.05, ttemp test was ttemp=0, ttemp2 = -0.2/0.3, tiso=0.001
+# can add more covariates if needed
 beta_group <- c(ttemp = 0.02, ttemp2 = -0.2, 
                 #tiso = 0.001, 
                 #tseas = -0.001, 
@@ -58,6 +58,7 @@ plot(group_prob_pres, main="Prob of Presence")
 writeRaster(group_prob_pres,
             "data/grids/hgam_multiple_layers/group_prob_pres_hgam.tif",
             overwrite = TRUE)
+
 # number of simulations
 n <- 10
 
@@ -70,6 +71,7 @@ all_bias <- mad_mask
 
 # running n number of simulations
 for(x in 1:n){
+  # Preparing raster data *******************************************************
   # complex-level deviations
   complex_data <- data.frame(
     complex = factor(paste("cp", 1:n_cp, sep="")),
@@ -175,7 +177,8 @@ for(x in 1:n){
               overwrite = TRUE)
   all_bias <- bias*sp_bias
   
-  #number of samples similar to leuco data
+  # Simulating data *************************************************************
+  # number of samples similar to leuco data
   n_samples <- 149
   num_species <- nlyr(prob_pres_sp)
   
@@ -333,7 +336,7 @@ for(x in 1:n){
     row.names = FALSE
   )
   
-  # use only species-data, no complex data
+  # use group and species data, no complex data $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
   # unbiased po #################################################################
   po_model_data <- read_csv("data/tabular/hgam_multiple_layers/presence_only_data_rbg_hgam.csv")
   po_model_data <- po_model_data[!po_model_data$sp %in% c("complex1", "complex2"),]
@@ -351,6 +354,7 @@ for(x in 1:n){
     row.names = FALSE
   )
   
+  # use species-only data, no group or complex data $$$$$$$$$$$$$$$$$$$$$$$$$$$$$
   # unbiased po #################################################################
   po_model_data <- read_csv("data/tabular/hgam_multiple_layers/presence_only_data_rbg_hgam.csv")
   po_model_data <- po_model_data[!po_model_data$sp %in% c("group", "complex1", "complex2"),]
@@ -368,7 +372,7 @@ for(x in 1:n){
     row.names = FALSE
   )
   
-  ### modeling ******************************************************************
+  ### Modeling ******************************************************************
   # loading in variables
   prob_pres_sp <- terra::rast("data/grids/hgam_multiple_layers/spec_prob_pres_hgam.tif")
   prob_pres_cp <- terra::rast("data/grids/hgam_multiple_layers/complex_prob_pres_hgam.tif")
@@ -381,8 +385,6 @@ for(x in 1:n){
     species_id = 1:num_species,
     complex = rep(seq_len(nrow(n_sp)), times=n_sp$n_sp)
   )
-  
-  pa_tab <- read_csv("data/tabular/hgam_multiple_layers/hgam_pa_tab_data_med.csv")
   
   # calculating group probability of presence from individual species
   complex_prob_pres <- rast(rep(mad_mask, n_cp))
@@ -414,21 +416,25 @@ for(x in 1:n){
   pa_model_data_nocp$sp <- as.factor(pa_model_data_nocp$sp)
   
   ## unbiased ##################################################################
+  # model: all data, all smooths
   mos_modGS <- gam(formula = full_formula, 
                    data = pa_model_data,
                    optimizer=c("outer", "bfgs"),
                    family = "binomial", 
                    method = "REML")
+  # model: group and species data, all smooths
   mos_modGS_gp <- gam(formula = full_formula, 
                         data = pa_model_data_gp, 
                         optimizer=c("outer", "bfgs"),
                         family = "binomial", 
                         method = "REML")
+  # model: species data, all smooths
   mos_modGS_nocp <- gam(formula = full_formula, 
                       data = pa_model_data_nocp, 
                       optimizer=c("outer", "bfgs"),
                       family = "binomial", 
                       method = "REML")
+  # model: species data, species smooths
   mos_modGS_nogp <- gam(formula=part_formula, 
                         data = pa_model_data_nocp, 
                         optimizer=c("outer", "bfgs"),
@@ -490,21 +496,25 @@ for(x in 1:n){
   pa_model_data_allbiased_nocp <- read_csv("data/tabular/hgam_multiple_layers/hgam_pa_data_med_allbias_nocp.csv")
   pa_model_data_allbiased_nocp$sp <- as.factor(pa_model_data_allbiased_nocp$sp)
   
+  # model: all data, all smooths
   mos_modGS_allbiased <- gam(formula = full_formula, 
                              data = pa_model_data_allbiased,
                              optimizer=c("outer", "bfgs"),
                              family = "binomial", 
                              method = "REML")
+  # model: group and species data, all smooths
   mos_modGS_allbiased_gp <- gam(formula = full_formula, 
                                 data = pa_model_data_allbiased_gp,
                                 optimizer=c("outer", "bfgs"),
                                 family = "binomial", 
                                 method = "REML")
+  # model: species data, all smooths
   mos_modGS_allbiased_nocp <- gam(formula = full_formula, 
                                   data = pa_model_data_allbiased_nocp,
                                   optimizer=c("outer", "bfgs"),
                                   family = "binomial", 
                                   method = "REML")
+  # model: species data, species smooths
   mos_modGS_allbiased_nogp <- gam(formula = part_formula, 
                                   data = pa_model_data_allbiased_nocp,
                                   optimizer=c("outer", "bfgs"),
@@ -567,21 +577,25 @@ for(x in 1:n){
   po_model_data_nocp$sp <- as.factor(po_model_data_nocp$sp)
   
   ## unbiased ###################################################################
+  # model: all data, all smooths
   mos_modGS_rbg <- gam(formula = full_formula, 
                        data = po_model_data,
                        optimizer=c("outer", "bfgs"),
                        family = "binomial", 
                        method = "REML")
+  # model: group and species data, all smooths
   mos_modGS_rbg_gp <- gam(formula = full_formula, 
                             data = po_model_data_gp,
                             optimizer=c("outer", "bfgs"),
                             family = "binomial", 
                             method = "REML")
+  # model: species data, all smooths
   mos_modGS_rbg_nocp <- gam(formula = full_formula, 
                             data = po_model_data_nocp,
                             optimizer=c("outer", "bfgs"),
                             family = "binomial", 
                             method = "REML")
+  # model: species data, species smooths
   mos_modGS_rbg_nogp <- gam(formula = part_formula, 
                             data = po_model_data_nocp,
                             optimizer=c("outer", "bfgs"),
@@ -642,21 +656,25 @@ for(x in 1:n){
   po_model_data_allbiased_nocp <- read_csv("data/tabular/hgam_multiple_layers/hgam_po_data_med_allbias_nocp.csv")
   po_model_data_allbiased_nocp$sp <- as.factor(po_model_data_allbiased_nocp$sp)
   
+  # model: all data, all smooths
   mos_modGS_allbiased_rbg <- gam(formula = full_formula, 
                                  data = po_model_data_allbiased,
                                  optimizer=c("outer", "bfgs"),
                                  family = "binomial", 
                                  method = "REML")
+  # model: group and species data, all smooths
   mos_modGS_allbiased_rbg_gp <- gam(formula = full_formula, 
                                       data = po_model_data_allbiased_gp,
                                       optimizer=c("outer", "bfgs"),
                                       family = "binomial", 
                                       method = "REML")
+  # model: species data, all smooths
   mos_modGS_allbiased_rbg_nocp <- gam(formula = full_formula, 
                                       data = po_model_data_allbiased_nocp,
                                       optimizer=c("outer", "bfgs"),
                                       family = "binomial", 
                                       method = "REML")
+  # model: species data, species smooths
   mos_modGS_allbiased_rbg_nogp <- gam(formula = part_formula, 
                                       data = po_model_data_allbiased_nocp,
                                       optimizer=c("outer", "bfgs"),
@@ -710,6 +728,7 @@ for(x in 1:n){
   }
 }
 
+# Evaluating metrics ************************************************************
 # adjusting data
 cor_unbiased <- bind_rows(cor_unbiased, .id="column_label") %>% select(-column_label) %>%
   rename("All Data, All Smooths"=E, "Group + Species Data, All Smooths"=GS, "Species-Only Data, All Smooths"=S,

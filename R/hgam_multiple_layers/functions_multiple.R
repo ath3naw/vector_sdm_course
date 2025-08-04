@@ -81,45 +81,6 @@ probability_of_presence <- function(relative_abundance,
   
 }
 
-# plot a raster with simple points over it
-rastpointplot <- function(
-    r,
-    v,
-    pch = 16,
-    cex = 0.5
-){
-  
-  plot(r)
-  points(v, pch = pch, cex = cex)
-  
-}
-
-
-# # combine sdm data from spatial to df
-# make_sdm_data <- function(
-    #   presences,
-#   absences,
-#   covariates
-# ){
-#   
-#   pvals <- terra::extract(covariates, presences)
-#   avals <- terra::extract(covariates, absences)
-#   
-#   rbind(
-#     pvals %>%
-#       as_tibble %>%
-#       dplyr::select(-ID) %>%
-#       mutate(occ = 1),
-#     avals %>%
-#       as_tibble %>%
-#       dplyr::select(-ID) %>%
-#       mutate(occ = 0)
-#   ) %>%
-#     as_tibble
-#   
-# }
-
-
 # name prediction layer 
 sdm_predict <- function(
     model,
@@ -232,6 +193,7 @@ probability_ofal_response <- function (model, data, var, type = c("response", "l
   x
 }
 
+# function to calculate spacing of x-coords + y-values for partial response plot
 partial_response <- function (model, data, var, type = c("response", "link"), rng = NULL, nsteps = 25) {
   
   type <- match.arg(type)
@@ -286,6 +248,8 @@ partial_response_plot <- function(
   )
 }
 
+# function to plot partial response plot for group probability of presence
+# uses "true" formula to calculate true partial response
 partial_group <- function(var, means, bounds, cons, minmax, max_average_catch_size=5000, length_out = 25){
   var_name <- var
   i <- which(bounds$variable == var_name)
@@ -335,6 +299,8 @@ partial_group <- function(var, means, bounds, cons, minmax, max_average_catch_si
   )
 }
 
+# function to plot partial response plot for complex probability of presence
+# uses "true" formula to calculate true partial response
 partial_complex <- function(var, means, bounds, cons, minmax, max_average_catch_size=5000, length_out = 25, cp){
   var_name <- var
   i <- which(bounds$variable == var_name)
@@ -384,6 +350,8 @@ partial_complex <- function(var, means, bounds, cons, minmax, max_average_catch_
   )
 }
 
+# function to plot partial response plot for species probability of presence
+# uses "true" formula to calculate true partial response
 partial_spec <- function(var, means, bounds, cons, minmax, max_average_catch_size=5000, length_out = 25, cp, sp){
   var_name <- var
   i <- which(bounds$variable == var_name)
@@ -437,6 +405,7 @@ partial_spec <- function(var, means, bounds, cons, minmax, max_average_catch_siz
   )
 }
 
+# function to generate simulated data + convert to data frame
 generate_data_tabular <- function(n_samples, bias, prob_pres, n_sp, weighted = FALSE){
   num_sp <- sum(n_sp)
   sample_locations <- random_locations(bias,
@@ -487,6 +456,7 @@ generate_data_tabular <- function(n_samples, bias, prob_pres, n_sp, weighted = F
   pa_tab
 }
 
+# function to convert previous tabular data into format used by model
 generate_model_data <- function(n_samples, n_group, n_complex, n_cp, n_sp, pa_tab){
   pa_tab_1 <- pa_tab[1:n_group,] |>
     select(site_id, x, y, group) |>
@@ -533,6 +503,8 @@ generate_model_data <- function(n_samples, n_group, n_complex, n_cp, n_sp, pa_ta
   pa_model_data
 }
 
+# computes one type of metric to take the inverse of the probit function
+# for probability of presence - "unravels" prob pres into true relative abundance
 inverse_probit <- function(true_prob, pred_prob){
   clip_range <- function(x){
     pmin(pmax(x, 1e-10), 1-1e-10)
@@ -543,11 +515,13 @@ inverse_probit <- function(true_prob, pred_prob){
   as.numeric(global(resid, fun="mean", na.rm=TRUE))
 }
 
+# compute pearson correlation for pa data
 compute_cor <- function(true_prob, pred_prob){
   corr <- layerCor(c(true_prob, pred_prob), "pearson", na.rm=TRUE)$correlation
   corr[1,2]
 }
 
+# compute spearman correlation for po data
 compute_cor_po <- function(true_prob, pred_prob){
   v1 <- values(true_prob)
   v2 <- values(pred_prob)
@@ -555,43 +529,7 @@ compute_cor_po <- function(true_prob, pred_prob){
   corr[1,1]
 }
 
-fix_missing <- function(x) {
-  x <- ifelse(!grepl("°", x) & !is.na(x), paste0("0°", x), x)
-  x <- ifelse(!grepl("'", x) & !grepl("\"", x) & !is.na(x), sub("°", "°0'0\"", x), x)
-  x <- ifelse(!grepl("'", x) & grepl("\"", x) & !is.na(x), sub("°", "°0'", x), x)
-  x <- ifelse(!grepl("\"", x) & grepl("'", x) & !is.na(x), sub("'", "'0\"", x), x)
-  x <- trimws(x)
-  x
-}
-
-average_coords <- function(x) {
-  if(is.na(x)) return(NA_real_)
-  if(grepl("-", x)){
-    parts <- strsplit(x, "-")[[1]]
-    part1 <- fix_missing(parts[1])
-    part2 <- fix_missing(parts[2])
-    part1 <- as.numeric(char2dms(part1, chd = chd, chm = chm, chs = chs))
-    part2 <- as.numeric(char2dms(part2, chd = chd, chm = chm, chs = chs))
-    return(mean(c(part1, part2)))
-  }else{
-    x <- fix_missing(x)
-    return(as.numeric(char2dms(x, chd = chd, chm = chm, chs = chs)))
-  }
-}
-
-clean_coords <- function(x){
-  if(grepl("/", x)){
-    parts <- strsplit(x, "/")[[1]]
-    part1 <- parts[1]
-    part2 <- parts[2]
-    part1 <- as.numeric(part1)
-    part2 <- as.numeric(part2)
-    return(mean(c(part1, part2)))
-  }else{
-    return(as.numeric(x))
-  }
-}
-
+# convert metrics into data frame to plot statistics/graphs
 make_long <- function(df, type) {
   df %>%
     pivot_longer(cols = everything(), names_to = "Model", values_to = "Correlation") %>%

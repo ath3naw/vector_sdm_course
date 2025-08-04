@@ -14,7 +14,7 @@ bc_twn <- terra::rast("data/grids/bc_mad.tif")
 
 # defining number of complex + species
 n_cp <- 2
-# 5 in 1st complex and 7 in 2nd
+# 5 in 1st complex and 7 in 2nd complex
 n_sp <- c(5,7)
 n_sp <- data.frame(n_sp)
 write.csv(n_sp,
@@ -25,7 +25,7 @@ write.csv(n_sp,
 max_catch_size <- 20
 
 # group level model
-#ttemp was 0.02, ttemp2=-0.05, ttemp test was ttemp=0, ttemp2 = -0.2/0.3, tiso=0.001
+# can add more covariates if needed
 beta_group <- c(ttemp = 0.02, ttemp2 = -0.2, 
                 #tiso = 0.001, 
                 #tseas = -0.001, 
@@ -171,6 +171,7 @@ max_value_cp <- global(complex_abund, "max", na.rm = TRUE)[, 1]
 min_value_sp <- global(species_abund, "min", na.rm = TRUE)[, 1]
 max_value_sp <- global(species_abund, "max", na.rm = TRUE)[, 1]
 
+# creating data frames for values
 minmax_group <- cbind(min_value_group, max_value_group)
 minmax_complex <- cbind(min_value_cp, max_value_cp)
 minmax_spec <- cbind(min_value_sp, max_value_sp)

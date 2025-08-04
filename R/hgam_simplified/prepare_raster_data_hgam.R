@@ -4,7 +4,7 @@ library(terra)
 library(geodata)
 library(gratia)
 library(dplyr)
-source("R/functions.R")
+source("R/hgam_simplified/functions.R")
 set.seed(126)
 par(mfrow = c(1,1))
 # read in variables
@@ -17,14 +17,14 @@ n_sp <- 10
 max_catch_size <- 10  # was 10
 
 # group level model
-#ttemp was 0.02, ttemp2=-0.05, ttemp test was ttemp=0, ttemp2 = -0.2/0.3, tiso=0.001
+# could add covariates if wanted
 beta_group <- c(ttemp = 0.02, ttemp2 = -0.1, 
                 #tiso = 0.001, 
                 #tseas = -0.001, 
                 #twet = 0.08, twet2 = -0.02, 
                 pprec = 0.001, pprec2 = -0.000004,
                 #pseas = 0.04, pseas2 = -0.0007, pwarm = 0.0002, pwarm2 = -0.000001, 
-                int=0.2) # int was 0.03
+                int=0.2)
 
 cons_group <- c(ttemp = 22, 
                 #twet = 24, 
@@ -65,7 +65,7 @@ group_prob_pres <- probability_of_presence(rel_group_abund,
                                            max_catch_size)
 plot(group_prob_pres, main="Prob of Presence")
 writeRaster(group_prob_pres,
-            "data/grids/group_prob_pres_hglm.tif",
+            "data/grids/group_prob_pres_hgam.tif",
             overwrite = TRUE)
 
 # calculating species abundance
@@ -87,7 +87,7 @@ prob_pres <- probability_of_presence(rel_species_abund,
                                      max_catch_size)
 plot(prob_pres, main="Prob of Presence")
 writeRaster(prob_pres,
-            "data/grids/spec_prob_pres_hglm.tif",
+            "data/grids/spec_prob_pres_hgam.tif",
             overwrite = TRUE)
 
 # calculating bounds of covariates for partial response plots

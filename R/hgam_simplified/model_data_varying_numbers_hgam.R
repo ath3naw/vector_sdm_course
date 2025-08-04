@@ -5,18 +5,19 @@ library(geodata)
 library(gratia)
 library(dplyr)
 library(mgcv)
-source("R/functions.R")
+source("R/hgam_simplified/functions.R")
 
 # read in variables
-prob_pres <- terra::rast("data/grids/spec_prob_pres_hglm.tif")
+prob_pres <- terra::rast("data/grids/spec_prob_pres_hgam.tif")
 covs <- terra::rast("data/grids/covariates.tif")
 mad_mask <- terra::rast("data/grids/mad_mask.tif")
 
-pa_tab_min <- read_csv("data/tabular/hglm_pa_tab_data_min.csv")
+# to know number of sampling locations in case it changed from simulation
+pa_tab_min <- read_csv("data/tabular/hgam_pa_tab_data_min.csv")
 n_samples_min <- nrow(pa_tab_min)
-pa_tab_med <- read_csv("data/tabular/hglm_pa_tab_data_med.csv")
+pa_tab_med <- read_csv("data/tabular/hgam_pa_tab_data_med.csv")
 n_samples_med <- nrow(pa_tab_med)
-pa_tab_max <- read_csv("data/tabular/hglm_pa_tab_data_max.csv")
+pa_tab_max <- read_csv("data/tabular/hgam_pa_tab_data_max.csv")
 n_samples_max <- nrow(pa_tab_max)
 
 # calculating group probability of presence from individual species
@@ -25,18 +26,20 @@ group_prob_pres <- 1-group_prob_abs
 n_sp <- nlyr(prob_pres)
 
 # No bias comparison of number of data points
-pa_model_data_min_nobias_23 <- read_csv("data/tabular/hglm_pa_data_min_nobias_23.csv")
+# 2/3 complex
+pa_model_data_min_nobias_23 <- read_csv("data/tabular/hgam_pa_data_min_nobias_23.csv")
 pa_model_data_min_nobias_23$sp <- as.factor(pa_model_data_min_nobias_23$sp)
-pa_model_data_med_nobias_23 <- read_csv("data/tabular/hglm_pa_data_med_nobias_23.csv")
+pa_model_data_med_nobias_23 <- read_csv("data/tabular/hgam_pa_data_med_nobias_23.csv")
 pa_model_data_med_nobias_23$sp <- as.factor(pa_model_data_med_nobias_23$sp)
-pa_model_data_max_nobias_23 <- read_csv("data/tabular/hglm_pa_data_max_nobias_23.csv")
+pa_model_data_max_nobias_23 <- read_csv("data/tabular/hgam_pa_data_max_nobias_23.csv")
 pa_model_data_max_nobias_23$sp <- as.factor(pa_model_data_max_nobias_23$sp)
 
-pa_model_data_min_nobias_13 <- read_csv("data/tabular/hglm_pa_data_min_nobias_13.csv")
+# 1/3 complex
+pa_model_data_min_nobias_13 <- read_csv("data/tabular/hgam_pa_data_min_nobias_13.csv")
 pa_model_data_min_nobias_13$sp <- as.factor(pa_model_data_min_nobias_13$sp)
-pa_model_data_med_nobias_13 <- read_csv("data/tabular/hglm_pa_data_med_nobias_13.csv")
+pa_model_data_med_nobias_13 <- read_csv("data/tabular/hgam_pa_data_med_nobias_13.csv")
 pa_model_data_med_nobias_13$sp <- as.factor(pa_model_data_med_nobias_13$sp)
-pa_model_data_max_nobias_13 <- read_csv("data/tabular/hglm_pa_data_max_nobias_13.csv")
+pa_model_data_max_nobias_13 <- read_csv("data/tabular/hgam_pa_data_max_nobias_13.csv")
 pa_model_data_max_nobias_13$sp <- as.factor(pa_model_data_max_nobias_13$sp)
 
 
@@ -163,6 +166,7 @@ partial_response_plot(
   scale = "response"
 )
 
+# checking models
 round(k.check(mos_modGS_min_nobias_23),2)
 round(k.check(mos_modGS_med_nobias_23),2)
 round(k.check(mos_modGS_max_nobias_23),2)
@@ -292,12 +296,14 @@ partial_response_plot(
   scale = "response"
 )
 
+# checking models
 round(k.check(mos_modGS_min_nobias_13),2)
 round(k.check(mos_modGS_med_nobias_13),2)
 round(k.check(mos_modGS_max_nobias_13),2)
 
 par(mfrow=c(3,3))
-# plot real vs predicted models, group
+# plot real vs predicted models, comparing data quality predictions
+# group
 plot(group_prob_pres, main=paste("Group Prob of Pres"), range=c(0,1))
 plot(pred_pa_modGS_group_min_nobias_23, main=paste("2/3 Complex Pred_Group_Dist -", n_samples_min, "points"), range=c(0,1))
 plot(pred_pa_modGS_group_med_nobias_23, main=paste("2/3 Complex Pred_Group_Dist -", n_samples_med, "points"), range=c(0,1))
@@ -306,6 +312,7 @@ plot(pred_pa_modGS_group_min_nobias_13, main=paste("1/3 Complex Pred_Group_Dist 
 plot(pred_pa_modGS_group_med_nobias_13, main=paste("1/3 Complex Pred_Group_Dist -", n_samples_med, "points"), range=c(0,1))
 plot(pred_pa_modGS_group_max_nobias_13, main=paste("1/3 Complex Pred_Group_Dist -", n_samples_max, "points"), range=c(0,1))
 
+# plot real vs predicted models, comparing data quality predictions
 # species
 for(letter in letters[1:n_sp]){
   covs$sp <- letter

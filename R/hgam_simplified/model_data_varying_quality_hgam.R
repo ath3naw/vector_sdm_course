@@ -5,15 +5,15 @@ library(geodata)
 library(gratia)
 library(dplyr)
 library(mgcv)
-source("R/functions.R")
+source("R/hgam_simplified/functions.R")
 
 # read in variables
-prob_pres <- terra::rast("data/grids/spec_prob_pres_hglm.tif")
+prob_pres <- terra::rast("data/grids/spec_prob_pres_hgam.tif")
 covs <- terra::rast("data/grids/covariates.tif")
 mad_mask <- terra::rast("data/grids/mad_mask.tif")
 bias <- terra::rast("data/grids/bias.tif")
 
-pa_tab <- read_csv("data/tabular/hglm_pa_tab_data_med.csv")
+pa_tab <- read_csv("data/tabular/hgam_pa_tab_data_med.csv")
 n_samples <- nrow(pa_tab)
 
 # calculating group probability of presence from individual species
@@ -22,56 +22,14 @@ group_prob_pres <- 1-group_prob_abs
 n_sp <- nlyr(prob_pres)
 
 # No bias comparison of model quality (whether more complex data or more individual species data)
-pa_model_data_med_nobias_56 <- read_csv("data/tabular/hglm_pa_data_med_nobias_56.csv")
+pa_model_data_med_nobias_56 <- read_csv("data/tabular/hgam_pa_data_med_nobias_56.csv")
 pa_model_data_med_nobias_56$sp <- as.factor(pa_model_data_med_nobias_56$sp)
-pa_model_data_med_nobias_23 <- read_csv("data/tabular/hglm_pa_data_med_nobias_23.csv")
+pa_model_data_med_nobias_23 <- read_csv("data/tabular/hgam_pa_data_med_nobias_23.csv")
 pa_model_data_med_nobias_23$sp <- as.factor(pa_model_data_med_nobias_23$sp)
-pa_model_data_med_nobias_13 <- read_csv("data/tabular/hglm_pa_data_med_nobias_13.csv")
+pa_model_data_med_nobias_13 <- read_csv("data/tabular/hgam_pa_data_med_nobias_13.csv")
 pa_model_data_med_nobias_13$sp <- as.factor(pa_model_data_med_nobias_13$sp)
-pa_model_data_med_nobias_16 <- read_csv("data/tabular/hglm_pa_data_med_nobias_16.csv")
+pa_model_data_med_nobias_16 <- read_csv("data/tabular/hgam_pa_data_med_nobias_16.csv")
 pa_model_data_med_nobias_16$sp <- as.factor(pa_model_data_med_nobias_16$sp)
-
-
-# # Biased comparison of model quality
-# pa_model_data_biased <- read_csv("data/tabular/hglm_pa_data_biased.csv")
-# pa_model_data_biased$sp <- as.factor(pa_model_data_biased$sp)
-
-
-# Creating the models
-# group
-# mos_modGS <- gam(pa ~ s(ttemp) + 
-#                    s(ttemp, sp, bs = "fs", by=not_complex), 
-#                  data = pa_model_data, 
-#                  family = "binomial", 
-#                  method = "REML")
-# 
-# covs$not_complex <- 0
-# covs$sp <- "x"
-# # specify the species
-# pred_pa_modGS <- sdm_predict(
-#   model = mos_modGS,
-#   covariates = covs
-# )
-# par(mfrow=c(1,1))
-# plot(pred_pa_modGS)
-# par(mfrow=c(1,2))
-# plot(group_prob_pres, main="Group Prob of Pres", range=c(0,1))
-# plot(pred_pa_modGS, main="predicted_distribution", range=c(0,1))
-# 
-# covs$not_complex <- 1
-# # Plot all species
-# for(letter in letters[1:10]){
-#   covs$sp <- letter
-#   pred_pa_modGS <- sdm_predict(
-#     model = mos_modGS,
-#     covariates = covs
-#   )
-#   par(mfrow=c(1,2))
-#   plot(prob_pres[[match(letter, letters)]], main = "True Prob of Pres", range=c(0,1))
-#   plot(pred_pa_modGS, main = paste("Species ", letter), range=c(0,1))
-# }
-# 
-# par(mfrow=c(1,1))
 
 
 # Creating the models - unbiased
@@ -230,6 +188,8 @@ partial_response_plot(
   # scale = "link"
   scale = "response"
 )
+
+# checking models
 round(k.check(mos_modGS_med_nobias_56),2)
 round(k.check(mos_modGS_med_nobias_23),2)
 round(k.check(mos_modGS_med_nobias_13),2)

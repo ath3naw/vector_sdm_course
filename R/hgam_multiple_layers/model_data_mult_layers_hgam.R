@@ -25,8 +25,6 @@ species <- data.frame(
   complex = rep(seq_len(nrow(n_sp)), times=n_sp$n_sp)
 )
 
-pa_tab <- read_csv("data/tabular/hgam_multiple_layers/hgam_pa_tab_data_med.csv")
-#pa_tab_biased <- read_csv("data/tabular/hglm_pa_tab_data_med_biased.csv")
 
 # calculating group probability of presence from individual species
 complex_prob_pres <- rast(rep(mad_mask, n_cp))
@@ -42,12 +40,6 @@ group_prob_pres <- 1-app(1-complex_prob_pres, fun=prod, na.rm=TRUE)
 pa_model_data <- read_csv("data/tabular/hgam_multiple_layers/hgam_pa_data_med_nobias_23.csv")
 pa_model_data$sp <- as.factor(pa_model_data$sp)
 
-# pa_model_data_spbiased <- read_csv("data/tabular/hglm_pa_data_med_spbias_23.csv")
-# pa_model_data_spbiased$sp <- as.factor(pa_model_data_spbiased$sp)
-# po_model_data <- read_csv("data/tabular/hgam_multiple_layers/presence_only_data_hgam.csv")
-# po_model_data$sp <- as.factor(po_model_data$sp)
-
-
 # generating formula
 smooths <- paste0("te(ttemp, pprec, bs=c('tp', 'tp'), by=complex",1:n_cp,")")
 full_formula <- paste("pa ~ te(ttemp, pprec, bs=c('tp', 'tp')) + ",
@@ -57,7 +49,7 @@ full_formula <- paste("pa ~ te(ttemp, pprec, bs=c('tp', 'tp')) + ",
 full_formula <- as.formula(full_formula)
 full_formula
 
-# presence-absence data ########################################################
+# presence-absence data ********************************************************
 # unbiased #####################################################################
 # need to have categories of complex
 # model: all data, all smooths
@@ -144,6 +136,7 @@ partial_response_plot(
   scale = "response"
 )
 
+# check models
 round(k.check(mos_modGS),2)
 
 # biased #######################################################################
@@ -227,6 +220,7 @@ plot(all_bias)
 points(pa_model_data_allbiased$x, pa_model_data_allbiased$y, pch=20)
 
 par(mfrow=c(1,2))
+
 # plot partial response plots
 partial_response_plot(
   model = mos_modGS_allbiased,
@@ -243,6 +237,7 @@ partial_response_plot(
   scale = "response"
 )
 
+# check models
 round(k.check(mos_modGS_allbiased),2)
 
 # presence-only data ***********************************************************
@@ -315,6 +310,7 @@ for(i in 1:num_species){
 }
 
 par(mfrow=c(1,2))
+
 # plot partial response plots
 partial_response_plot(
   model = mos_modGS_rbg,
@@ -331,6 +327,7 @@ partial_response_plot(
   scale = "response"
 )
 
+# check models
 round(k.check(mos_modGS_rbg),2)
 
 # presence-only model, biased ###################################################
@@ -441,6 +438,7 @@ partial_response_plot(
   scale = "response"
 )
 
+# check models
 round(k.check(mos_modGS_rbg),2)
 round(k.check(mos_modGS_allbiased_rbg),2)
 

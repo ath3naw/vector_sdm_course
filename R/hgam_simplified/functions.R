@@ -81,45 +81,6 @@ probability_of_presence <- function(relative_abundance,
   
 }
 
-# plot a raster with simple points over it
-rastpointplot <- function(
-  r,
-  v,
-  pch = 16,
-  cex = 0.5
-){
-  
-  plot(r)
-  points(v, pch = pch, cex = cex)
-  
-}
-
-
-# # combine sdm data from spatial to df
-# make_sdm_data <- function(
-#   presences,
-#   absences,
-#   covariates
-# ){
-#   
-#   pvals <- terra::extract(covariates, presences)
-#   avals <- terra::extract(covariates, absences)
-#   
-#   rbind(
-#     pvals %>%
-#       as_tibble %>%
-#       dplyr::select(-ID) %>%
-#       mutate(occ = 1),
-#     avals %>%
-#       as_tibble %>%
-#       dplyr::select(-ID) %>%
-#       mutate(occ = 0)
-#   ) %>%
-#     as_tibble
-#   
-# }
-
-
 # name prediction layer 
 sdm_predict <- function(
   model,
@@ -456,22 +417,6 @@ compute_mse <- function(true_prob, pred_prob){
   resid <- (pred_prob-true_prob)^2
   as.numeric(global(resid, fun="mean", na.rm=TRUE))
 }
-
-# compute_rel_abund_rmse <- function(true_prob, pred_prob, max_catch_size){
-#   true_rel_abund <- -(log(1-true_prob)/max_catch_size)
-#   pred_rel_abund <- -(log(1-pred_prob)/max_catch_size)
-#   resid <- (pred_rel_abund-true_rel_abund)^2
-#   mse <- as.numeric(global(resid, fun="mean", na.rm=TRUE))
-#   rmse <- sqrt(mse)
-#   rmse
-# }
-
-# compute_performance <- function(true_prob, pred_prob){
-#   true_perf <- ifel(true_prob>0.75, 1, 0)
-#   pred_perf <- ifel(pred_prob>0.75, 1, 0)
-#   resid <- abs(true_perf-pred_perf)
-#   as.numeric(global(resid, fun="mean", na.rm=TRUE))
-# }
 
 # computes one type of metric to take the inverse of the probit function
 # for probability of presence - "unravels" prob pres into true relative abundance

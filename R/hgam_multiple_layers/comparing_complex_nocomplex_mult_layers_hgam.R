@@ -184,6 +184,7 @@ partial_response_plot(
   scale = "response"
 )
 
+# checking models
 round(k.check(mos_modGS),2)
 round(k.check(mos_modGS_nocp),2)
 
@@ -220,6 +221,7 @@ pred_pa_modGS_allbiased_nocp_group <- sdm_predict(
 )
 
 par(mfrow=c(2,2))
+
 # plot predicted vs true distributions
 plot(group_prob_pres, main="Group Prob of Pres", range=c(0,1))
 plot(pred_pa_modGS_allbiased_group, main="Dist W/ Complex - biased", range=c(0,1))
@@ -293,6 +295,7 @@ mse
 cor
 
 par(mfrow=c(2,2))
+
 # plot partial response plots
 partial_response_plot(
   model = mos_modGS_allbiased,
@@ -323,12 +326,14 @@ partial_response_plot(
   scale = "response"
 )
 
+# checking models
 round(k.check(mos_modGS),2)
 round(k.check(mos_modGS_nocp),2)
 
 # presence-only data! **********************************************************
 po_model_data <- read_csv("data/tabular/hgam_multiple_layers/presence_only_data_rbg_hgam.csv")
 po_model_data$sp <- as.factor(po_model_data$sp)
+# species-only data
 po_model_data_nocp <- read_csv("data/tabular/hgam_multiple_layers/hgam_po_data_med_nocp.csv")
 po_model_data_nocp$sp <- as.factor(po_model_data_nocp$sp)
 
@@ -462,6 +467,7 @@ partial_response_plot(
   scale = "response"
 )
 
+# checking models
 round(k.check(mos_modGS),2)
 round(k.check(mos_modGS_nocp),2)
 
@@ -570,5 +576,6 @@ for(i in 1:num_species){
 # performance
 cor
 
+# checking models
 round(k.check(mos_modGS_allbiased_rbg),2)
 round(k.check(mos_modGS_allbiased_rbg_nocp),2)

@@ -5,9 +5,9 @@ library(geodata)
 library(gratia)
 library(dplyr)
 library(mgcv)
-library(raster)
-source("R/functions.R")
-# note: no group = species-only data in this case since there are only group and species layers
+source("R/hgam_simplified/functions.R")
+# note: no group = species-only data in this case since there are only
+# group and species layers
 
 # read in variables
 prob_pres <- terra::rast("data/grids/spec_prob_pres_hglm.tif")
@@ -132,6 +132,7 @@ partial_response_plot(
   scale = "response"
 )
 
+# checking models
 round(k.check(mos_modGS),2)
 round(k.check(mos_modGS_nocp),2)
 
@@ -182,7 +183,6 @@ covs$not_complex <- 1
 # data frames to store results
 mse <- data.frame(CP = 0, NoCP=0)
 cor <- data.frame(CP = 0, NoCP=0)
-# perf <- data.frame(CP=0, NoCP=0)
 # Plot all species
 for(letter in letters[1:n_sp]){
   covs$sp <- letter
@@ -241,6 +241,7 @@ partial_response_plot(
   scale = "response"
 )
 
+# checking models
 round(k.check(mos_modGS_biased),2)
 round(k.check(mos_modGS_biased_nocp),2)
 round(k.check(mos_modGS_spbiased),2)
@@ -349,6 +350,7 @@ partial_response_plot(
   scale = "response"
 )
 
+# checking models
 round(k.check(mos_modGS_rbg),2)
 round(k.check(mos_modGS_rbg_nocp),2)
 
@@ -454,6 +456,7 @@ partial_response_plot(
   scale = "response"
 )
 
+# checking models
 round(k.check(mos_modGS_biased),2)
 round(k.check(mos_modGS_biased_nocp),2)
 round(k.check(mos_modGS_spbiased),2)
@@ -721,6 +724,7 @@ partial_response_plot(
   scale = "response"
 )
 
+# checking models
 round(k.check(mos_modGS_56),2)
 round(k.check(mos_modGS_56_nocp),2)
 
@@ -810,6 +814,7 @@ mos_modGS_16_nocp <- gam(pa ~ te(ttemp, pprec, bs=c("tp", "tp")) +
 # species
 covs$not_complex <- 0
 covs$sp <- "x"
+
 # predict based on models
 pred_pa_modGS_56_group <- sdm_predict(
   model = mos_modGS_56,
@@ -986,5 +991,6 @@ partial_response_plot(
   scale = "response"
 )
 
+# checking models
 round(k.check(mos_modGS_56),2)
 round(k.check(mos_modGS_56_nocp),2)
